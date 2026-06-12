@@ -1,0 +1,11 @@
+std_msgs/Header header
+string device_id
+string run_id
+string source
+string skill_mode
+float32[] target_joint_pos
+float32[] target_joint_vel
+float32[] target_joint_torque
+float32[] kp
+float32[] kd
+geometry_msgs/Twist cmd_vel

@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lab-platform"
+version = "0.1.0"
+description = "具身智能实验室运行框架 Walking Skeleton"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+lab = "lab_platform.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["lab_platform*"]

@@ -1,0 +1,63 @@
+# --- 运行时数据（每台机器本地生成，见 INFRA-01）---
+lab_platform/data/
+/opt/lab/data/
+
+# --- ROS2 colcon 构建产物 ---
+ros2/build/
+ros2/install/
+ros2/log/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- 模型 / 录制 / 数据库（勿提交大文件）---
+*.pt
+*.pth
+*.onnx
+*.mcap
+*.bag
+*.db
+*.sqlite
+*.sqlite3
+
+# --- IDE / 编辑器 ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# --- 系统 ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- 环境与密钥 ---
+.env
+.env.*
+*.pem
+credentials.json
+secrets.yaml
+
+# --- 日志与临时 ---
+*.log
+tmp/
+temp/
+.cache/

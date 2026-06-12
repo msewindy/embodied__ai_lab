@@ -1,0 +1,6 @@
+# empty request
+---
+bool ok
+string sdk_version
+string message
+string[] checks_passed
