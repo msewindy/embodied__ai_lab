@@ -14,6 +14,16 @@ def _topic_device_id(device_id: str) -> str:
     return device_id.replace("-", "_")
 
 
+def _sensor_qos():
+    from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
+
+    return QoSProfile(
+        reliability=ReliabilityPolicy.BEST_EFFORT,
+        history=HistoryPolicy.KEEP_LAST,
+        depth=5,
+    )
+
+
 @dataclass
 class CheckResult:
     id: str
@@ -76,6 +86,7 @@ class Go2BringupRunner:
             rclpy.init()
 
         topic_ns = _topic_device_id(device_id)
+        operator_id = self._config.operator
 
         class _Checker(Node):
             def __init__(self) -> None:
@@ -95,7 +106,7 @@ class Go2BringupRunner:
                     JointState,
                     f"/perception/{topic_ns}/joint_states",
                     self._on_joint,
-                    10,
+                    _sensor_qos(),
                 )
                 self.create_subscription(NodeHealth, "/system/health", self._on_health, 10)
                 self.create_subscription(
@@ -141,7 +152,7 @@ class Go2BringupRunner:
                 msg.run_id = run_id
                 msg.run_type = "real_bringup"
                 msg.device_ids = [device_id]
-                msg.operator_id = self._config.operator
+                msg.operator_id = operator_id
                 self._ctx_pub.publish(msg)
 
         node = _Checker()
