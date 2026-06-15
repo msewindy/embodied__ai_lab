@@ -4,7 +4,7 @@ string run_type
 string[] device_ids
 string policy_id
 string experiment_plan_id
-string operator
+string operator_id
 string task_id
 string eval_protocol_id
 string scene_id

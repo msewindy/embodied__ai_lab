@@ -133,7 +133,7 @@ class Go2BringupRunner:
                 msg.run_id = run_id
                 msg.run_type = "real_bringup"
                 msg.device_ids = [device_id]
-                msg.operator = self._config.operator
+                msg.operator_id = self._config.operator
                 self._ctx_pub.publish(msg)
 
         node = _Checker()

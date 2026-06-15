@@ -47,7 +47,7 @@ class RunContextNode(Node):
         if not ids:
             ids = [self.get_parameter("device_id").get_parameter_value().string_value]
         msg.device_ids = ids
-        msg.operator = self.get_parameter("operator").get_parameter_value().string_value
+        msg.operator_id = self.get_parameter("operator").get_parameter_value().string_value
         msg.policy_id = self.get_parameter("policy_id").get_parameter_value().string_value
         msg.experiment_plan_id = (
             self.get_parameter("experiment_plan_id").get_parameter_value().string_value

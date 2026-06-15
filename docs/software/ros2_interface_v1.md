@@ -72,7 +72,7 @@ string run_type              # real_collect | real_deploy | real_eval | real_bri
 string[] device_ids
 string policy_id             # 空字符串表示无
 string experiment_plan_id
-string operator
+string operator_id             # 操作员 ID（勿用 operator，C++ 保留字）
 string task_id                 # 可选，eval/collect 对齐 task_manifest
 string eval_protocol_id        # 可选
 string scene_id                # 可选
@@ -368,7 +368,7 @@ graph LR
 |------|------|------|
 | v1.0-draft | — | 早期 draft，未对齐 TECH-09 Run 模型 |
 | **v1.0** | 2026-06-11 | 按 TECH-09 §七 重写：慢/快环、run_context、Pipeline B/C only |
-| **v1.1** | 2026-06-11 | RunContext 增 task_id/eval_protocol_id/scene_id；首设备 Go2（quadruped-01）embodied_lab_msgs + go2_driver_bridge + real_bringup |
+| **v1.1** | 2026-06-11 | RunContext 增 task_id/eval_protocol_id/scene_id；operator→operator_id（C++ 保留字）；首设备 Go2 |
 
 ---
 
