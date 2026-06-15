@@ -22,6 +22,7 @@ from embodied_lab_msgs.msg import (
     NodeHealth,
 )
 from embodied_lab_msgs.srv import BridgeSmoke
+from go2_driver_bridge.ros_names import topic_device_id
 
 
 GO2_JOINT_NAMES: List[str] = [
@@ -43,6 +44,7 @@ class Go2DriverBridgeNode(Node):
         self.declare_parameter("publish_hz", 100.0)
 
         self.device_id = self.get_parameter("device_id").get_parameter_value().string_value
+        self._topic_ns = topic_device_id(self.device_id)
         self.sim = self.get_parameter("sim").get_parameter_value().bool_value
         self.sdk_version = self.get_parameter("sdk_version").get_parameter_value().string_value
         self.max_speed_cap = self.get_parameter("max_speed_cap").get_parameter_value().double_value
@@ -66,20 +68,20 @@ class Go2DriverBridgeNode(Node):
             depth=1,
         )
 
-        prefix = f"/perception/{self.device_id}"
+        prefix = f"/perception/{self._topic_ns}"
         self._pub_joint = self.create_publisher(JointState, f"{prefix}/joint_states", sensor_qos)
         self._pub_imu = self.create_publisher(Imu, f"{prefix}/imu", sensor_qos)
         self._pub_odom = self.create_publisher(Odometry, f"{prefix}/odom", sensor_qos)
         self._pub_robot_state = self.create_publisher(RobotState, f"{prefix}/robot_state", sensor_qos)
         self._pub_health = self.create_publisher(NodeHealth, "/system/health", 10)
 
-        internal = f"/internal/{self.device_id}"
+        internal = f"/internal/{self._topic_ns}"
         self.create_subscription(
             JointCommand, f"{internal}/joint_command_limited", self._on_joint_cmd, 10
         )
         self.create_subscription(SafetyState, "/safety/global_state", self._on_safety, latched_qos)
         self.create_subscription(
-            SafetyState, f"/safety/{self.device_id}/local_state", self._on_safety, 10
+            SafetyState, f"/safety/{self._topic_ns}/local_state", self._on_safety, 10
         )
         self.create_subscription(RunContext, "/system/run_context", self._on_run_context, latched_qos)
 
@@ -91,7 +93,9 @@ class Go2DriverBridgeNode(Node):
             else:
                 self.get_logger().warn("sim=false but unitree_lowstate_topic empty; using internal sim")
 
-        self.create_service(BridgeSmoke, f"/go2_driver_bridge/{self.device_id}/smoke", self._smoke_cb)
+        self.create_service(
+            BridgeSmoke, f"/go2_driver_bridge/{self._topic_ns}/smoke", self._smoke_cb
+        )
 
         hz = self.get_parameter("publish_hz").get_parameter_value().double_value
         self.create_timer(1.0 / hz, self._tick)

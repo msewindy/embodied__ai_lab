@@ -9,6 +9,7 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPo
 from std_msgs.msg import Header, Empty
 
 from embodied_lab_msgs.msg import SafetyState, RunContext
+from go2_driver_bridge.ros_names import topic_device_id
 
 
 class SafetyCoordinatorNode(Node):
@@ -16,6 +17,7 @@ class SafetyCoordinatorNode(Node):
         super().__init__("safety_coordinator")
         self.declare_parameter("device_id", "quadruped-01")
         self._device_id = self.get_parameter("device_id").get_parameter_value().string_value
+        self._topic_ns = topic_device_id(self._device_id)
         self._level = 0
         self._source = "operator"
         self._message = "NORMAL"
@@ -30,7 +32,7 @@ class SafetyCoordinatorNode(Node):
         )
         self._pub_global = self.create_publisher(SafetyState, "/safety/global_state", latched)
         self._pub_local = self.create_publisher(
-            SafetyState, f"/safety/{self._device_id}/local_state", 10
+            SafetyState, f"/safety/{self._topic_ns}/local_state", 10
         )
         self.create_subscription(RunContext, "/system/run_context", self._on_run_context, latched)
         self.create_subscription(Empty, "/safety/trigger_estop", self._on_estop, 10)

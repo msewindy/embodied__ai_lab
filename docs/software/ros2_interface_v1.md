@@ -46,6 +46,7 @@ checkpoint / PolicyArtifact：**文件同步**加载，**不经 ROS2 传权重**
 ```
 
 - `{device_id}` 必须与 `device_capabilities.yaml` / 资产台账一致（如 `quadruped-01`、`franka-01`）。
+- **Topic/Service 路径**：ROS2 名段禁止 `-`；台账 `device_id` 中的 `-` 在 Topic 中映射为 `_`（如 `quadruped-01` → `/perception/quadruped_01/...`）。消息字段 `device_id` 仍用台账原值。
 - 多设备时每个 device_id 独立子树，禁止混用。
 
 ---

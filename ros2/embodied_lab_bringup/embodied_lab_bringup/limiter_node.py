@@ -7,6 +7,7 @@ import rclpy
 from rclpy.node import Node
 
 from embodied_lab_msgs.msg import JointCommand, SafetyState
+from go2_driver_bridge.ros_names import topic_device_id
 
 
 class LimiterNode(Node):
@@ -15,11 +16,12 @@ class LimiterNode(Node):
         self.declare_parameter("device_id", "quadruped-01")
         self.declare_parameter("max_joint_pos", 2.0)
         self._device_id = self.get_parameter("device_id").get_parameter_value().string_value
+        self._topic_ns = topic_device_id(self._device_id)
         self._max_pos = self.get_parameter("max_joint_pos").get_parameter_value().double_value
         self._last_clip_count = 0
         self._estop = False
 
-        internal = f"/internal/{self._device_id}"
+        internal = f"/internal/{self._topic_ns}"
         self._pub = self.create_publisher(JointCommand, f"{internal}/joint_command_limited", 10)
         self.create_subscription(JointCommand, f"{internal}/joint_command", self._on_cmd, 10)
         self.create_subscription(SafetyState, "/safety/global_state", self._on_safety, 10)

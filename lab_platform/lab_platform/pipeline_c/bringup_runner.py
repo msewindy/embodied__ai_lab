@@ -10,6 +10,10 @@ from lab_platform.config import LabConfig
 from lab_platform.pipeline_c.bridge_updater import load_vendor_sdk_version, update_bridge_level
 
 
+def _topic_device_id(device_id: str) -> str:
+    return device_id.replace("-", "_")
+
+
 @dataclass
 class CheckResult:
     id: str
@@ -71,6 +75,8 @@ class Go2BringupRunner:
         if not rclpy.ok():
             rclpy.init()
 
+        topic_ns = _topic_device_id(device_id)
+
         class _Checker(Node):
             def __init__(self) -> None:
                 super().__init__("bringup_checker")
@@ -87,7 +93,7 @@ class Go2BringupRunner:
                 )
                 self.create_subscription(
                     JointState,
-                    f"/perception/{device_id}/joint_states",
+                    f"/perception/{topic_ns}/joint_states",
                     self._on_joint,
                     10,
                 )
@@ -97,17 +103,19 @@ class Go2BringupRunner:
                 )
                 self.create_subscription(
                     JointCommand,
-                    f"/internal/{device_id}/joint_command_limited",
+                    f"/internal/{topic_ns}/joint_command_limited",
                     self._on_limited,
                     10,
                 )
                 self._ctx_pub = self.create_publisher(RunContext, "/system/run_context", latched)
                 self._cmd_pub = self.create_publisher(
-                    JointCommand, f"/internal/{device_id}/joint_command", 10
+                    JointCommand, f"/internal/{topic_ns}/joint_command", 10
                 )
                 self._estop_pub = self.create_publisher(Empty, "/safety/trigger_estop", 10)
                 self._clear_pub = self.create_publisher(Empty, "/safety/clear_estop", 10)
-                self._smoke = self.create_client(BridgeSmoke, f"/go2_driver_bridge/{device_id}/smoke")
+                self._smoke = self.create_client(
+                    BridgeSmoke, f"/go2_driver_bridge/{topic_ns}/smoke"
+                )
 
             def _on_joint(self, _msg: JointState) -> None:
                 self.joint_count += 1
