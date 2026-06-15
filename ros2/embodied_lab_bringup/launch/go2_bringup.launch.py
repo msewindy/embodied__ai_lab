@@ -5,9 +5,18 @@ from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
+
+def generate_launch_description():
+    device_id = LaunchConfiguration("device_id")
+    sim = LaunchConfiguration("sim")
+    sdk_version = LaunchConfiguration("sdk_version")
+    unitree_topic = LaunchConfiguration("unitree_lowstate_topic")
+
     bridge_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            PathJoinSubstitution([FindPackageShare("go2_driver_bridge"), "launch", "go2_bridge.launch.py"])
+            PathJoinSubstitution(
+                [FindPackageShare("go2_driver_bridge"), "launch", "go2_bridge.launch.py"]
+            )
         ),
         launch_arguments={
             "device_id": device_id,
@@ -22,7 +31,6 @@ from launch_ros.substitutions import FindPackageShare
         executable="run_context_node",
         name="run_context_node",
         output="screen",
-        condition=None,
         parameters=[{
             "run_id": "debug_bringup",
             "run_type": "real_bringup",
