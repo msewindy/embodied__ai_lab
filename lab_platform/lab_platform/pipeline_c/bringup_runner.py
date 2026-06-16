@@ -76,6 +76,7 @@ class Go2BringupRunner:
             rclpy.init()
 
         topic_ns = _topic_device_id(device_id)
+        operator = self._config.operator
 
         class _Checker(Node):
             def __init__(self) -> None:
@@ -148,7 +149,7 @@ class Go2BringupRunner:
                 msg.run_id = run_id
                 msg.run_type = "real_bringup"
                 msg.device_ids = [device_id]
-                msg.operator_id = self._config.operator
+                msg.operator_id = operator
                 self._ctx_pub.publish(msg)
 
         node = _Checker()
