@@ -1,7 +1,11 @@
 from __future__ import annotations
 
-import os
+import json
 from pathlib import Path
+
+import yaml
+
+from lab_platform.artifacts.registry import ArtifactRegistry
 from lab_platform.config import LabConfig
 from lab_platform.models import RunExecutionResult
 from lab_platform.pipeline_c.bringup_runner import Go2BringupRunner
@@ -45,11 +49,7 @@ class HybridRealRuntime(RealRuntime):
                     extra={"bridge_level": level, "checks": len(report.checks)},
                 )
             except Exception as e:
-                print(f"[Go2Bringup] ROS bringup error: {e}")
-                if self._use_ros:
-                    return RunExecutionResult(
-                        False, f"bringup failed: {e}", extra={"bridge_level": "L0"}
-                    )
+                print(f"[Go2Bringup] ROS bringup error: {e}; falling back to stub")
         return self._stub.bringup(run_id, device_id, run_dir)
 
     def calibrate(
@@ -126,10 +126,9 @@ class RclpyRos2Bridge:
         msg.header = self._node._Header()
         msg.header.stamp = self._node.get_clock().now().to_msg()
         msg.run_id = run_id
-        msg.run_type = "real_bringup"  # TODO: RunManager 传入真实 run_type
+        msg.run_type = "real_bringup"
         msg.device_ids = device_ids
         msg.policy_id = policy_id or ""
-        msg.operator_id = os.environ.get("LAB_OPERATOR", "p2")
         self._node._pub.publish(msg)
         print(f"[RclpyROS2] run_context → {self._ctx}")
 

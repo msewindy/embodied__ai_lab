@@ -2,7 +2,6 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
-from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
@@ -18,7 +17,7 @@ def generate_launch_description():
             output="screen",
             parameters=[{
                 "device_id": LaunchConfiguration("device_id"),
-                "sim": ParameterValue(LaunchConfiguration("sim"), value_type=bool),
+                "sim": LaunchConfiguration("sim"),
                 "sdk_version": LaunchConfiguration("sdk_version"),
                 "unitree_lowstate_topic": LaunchConfiguration("unitree_lowstate_topic"),
                 "publish_hz": 100.0,

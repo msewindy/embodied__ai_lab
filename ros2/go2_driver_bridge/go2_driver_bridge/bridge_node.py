@@ -22,7 +22,7 @@ from embodied_lab_msgs.msg import (
     NodeHealth,
 )
 from embodied_lab_msgs.srv import BridgeSmoke
-from go2_driver_bridge.ros_names import param_bool, topic_device_id
+from go2_driver_bridge.ros_names import topic_device_id
 
 
 GO2_JOINT_NAMES: List[str] = [
@@ -45,7 +45,7 @@ class Go2DriverBridgeNode(Node):
 
         self.device_id = self.get_parameter("device_id").get_parameter_value().string_value
         self._topic_ns = topic_device_id(self.device_id)
-        self.sim = param_bool(self, "sim", default=True)
+        self.sim = self.get_parameter("sim").get_parameter_value().bool_value
         self.sdk_version = self.get_parameter("sdk_version").get_parameter_value().string_value
         self.max_speed_cap = self.get_parameter("max_speed_cap").get_parameter_value().double_value
         self._joint_names = GO2_JOINT_NAMES
