@@ -23,6 +23,8 @@
 | TECH-01 | 系统整体架构设计 | `docs/architecture/blueprint_v0.md` | draft |
 | TECH-02 | 统一消息接口 (ROS2) | `docs/software/ros2_interface_v1.md` | **v1.0** |
 | TECH-03 | 算力与网络规划 | `docs/infra/infra_plan_draft_v0.md` | draft |
+| INFRA-01 | 环境安装与验收清单 | `docs/infra/env_setup_checklist_v1.md` | **v1.0** |
+| INFRA-02 | Phase 1 验证测试方案 | `docs/infra/phase1_validation_plan_v1.md` | **v1.0** |
 | TECH-04 | 软件版本矩阵 | `docs/software/version_matrix_v1.md` | draft |
 | TECH-05 | 数据与实验记录规范 | `docs/data/run_id_spec.md` | **v1.0** |
 | TECH-06 | 平台软件架构与部署拓扑图 | `docs/architecture/platform_architecture_v1.md` | draft |
