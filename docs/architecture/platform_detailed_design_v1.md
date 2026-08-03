@@ -1,17 +1,17 @@
-# 具身智能平台软件架构详细设计 v1.0-draft
+# 具身智能平台软件架构详细设计 v1.1
 
 | 属性 | 内容 |
 |------|------|
 | **文档编号** | TECH-08 |
-| **版本** | v1.0-draft |
-| **维护人** | P2 |
-| **前置依据** | [系统整体架构设计](./blueprint_v0.md) · [软件版本矩阵](../software/version_matrix_v1.md) |
+| **版本** | v1.1 |
+| **维护人** | R2 |
+| **依据** | [governance_index_v1.md](../org/governance_index_v1.md) · [plan_review_w1.md](../meeting/plan_review_w1.md) · [系统整体架构设计](./blueprint_v0.md) · [软件版本矩阵](../software/version_matrix_v1.md) |
 
 ---
 
 ## 一、 设计方法与目标
 
-本详细设计将 P1 顶层架构蓝图转化为**可执行的软件工程框架**。
+本详细设计将 R1 顶层架构蓝图转化为**可执行的软件工程框架**。
 
 **设计方法**：以 Isaac Lab 等业界典型任务为参照，先定义**任务域与策略迭代全生命周期**，再推导**功能子系统**与**非功能约束**，最后才导出 ROS2 接口、日志落盘等具体规范。
 
@@ -169,7 +169,7 @@ flowchart LR
 
 以下能力**贯穿 L-B 与 L-C**，不单独算作“业务子系统”，但是强制模块：
 
-| 模块 | 职责 | 关联 P1 契约 |
+| 模块 | 职责 | 关联 R1 契约 |
 |------|------|--------------|
 | **Driver Bridge** | 厂商 SDK 封装，输出统一 Perception / 接收 SkillCommand | 软硬解耦 |
 | **Safety Runtime** | 限幅、软停、急停广播、三级安全响应 | HSI 三级急停 |
@@ -253,13 +253,22 @@ sequenceDiagram
 
 ---
 
-## 八、 下一步 (P2)
+## 八、 下一步 (R2)
 
 1. ~~**评审** TECH-09~~ → **v1.0-approved**（2026-06-10）
 2. ~~P0 规范导出~~ → TECH-05/10/11/12/13
 3. ~~MDD 启动~~ → 见 `docs/modules/README.md`
 4. **进行中**：按顺序实现 IndexService → RunManager → Isaac Adapter → Pipeline C
-5. **P1**：重写 `ros2_interface_v1.md`，完善 Real 栈 MDD
+5. **R1**：重写 `ros2_interface_v1.md`，完善 Real 栈 MDD
+
+---
+
+## 九、 变更记录
+
+| 版本 | 日期 | 说明 |
+|------|------|------|
+| v1.0-draft | 2026-06 | 首版功能架构 |
+| **v1.1** | 2026-07-09 | 角色口径 R1/R2；对齐 W1 冻结决策 |
 
 ---
 

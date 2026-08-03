@@ -1,11 +1,11 @@
-# 三级安全急停逻辑图 (E-Stop Logic) v1.0-draft
+# 三级安全急停逻辑图 (E-Stop Logic) v1.1
 
 | 属性 | 内容 |
 |------|------|
 | **文档编号** | SFT-02 |
-| **版本** | v1.0-draft |
-| **维护人** | P3 |
-| **前置依据** | [系统整体架构设计](../architecture/blueprint_v0.md) |
+| **版本** | v1.1 |
+| **维护人** | R3 |
+| **依据** | [governance_index_v1.md](../org/governance_index_v1.md) · [plan_review_w1.md](../meeting/plan_review_w1.md) · [blueprint_v0.md](../architecture/blueprint_v0.md) |
 
 ---
 
@@ -64,7 +64,9 @@
 
 ---
 
-## 三、实施与采购清单 (P3 动作项)
+## 三、实施与采购清单 (R3 动作项)
+
+> **硬接线详图：** 端子表、线径、施工验收见 [LAYOUT-02 电气连接设计](../layout/electrical_design_v1.md) §五～§七。
 
 1. 采购带辅助触点的急停按钮盒（E1, E2），仅需弱电接线。
 2. 采购 USB 串口 GPIO 采集卡（用于将 E1/E2 信号接入 `lab-ws-01`）。

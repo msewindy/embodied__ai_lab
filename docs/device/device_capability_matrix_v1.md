@@ -3,8 +3,8 @@
 | 属性 | 内容 |
 |------|------|
 | **文档编号** | TECH-11 |
-| **版本** | v1.0 |
-| **维护人** | P2（矩阵）/ P3（台账状态） |
+| **版本** | v1.1 |
+| **维护人** | R2（矩阵）/ R3（台账状态） |
 | **依据** | TECH-09 v1.0-approved §8.5 |
 
 ---
@@ -17,7 +17,7 @@ data/registry/bridge_maturity.yaml       # 每 device Bridge 状态
 data/vendor/{device_model}/              # Driver Bridge 插件元数据
 ```
 
-PreFlight、CompatibilityCheck、RunManager 只读；变更经 **change_control** + P3 台账同步。
+PreFlight、CompatibilityCheck、RunManager 只读；变更经 **change_control** + R3 台账同步。
 
 ---
 
@@ -123,7 +123,7 @@ devices:
 | quadruped-01 | 四足 | L0 | Go2 |
 | humanoid-01 | 人形 | L0 | 待定型号 |
 
-新设备入库流程：P3 台账 → 写入 `device_capabilities.yaml`（L0）→ 排期 `real_bringup`。
+新设备入库流程：R3 台账 → 写入 `device_capabilities.yaml`（L0）→ 排期 `real_bringup`。
 
 ---
 

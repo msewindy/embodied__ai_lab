@@ -4,7 +4,7 @@
 |------|------|
 | **模块** | Pipeline C · real_bringup / calibration_session |
 | **版本** | v1.0-draft |
-| **维护人** | P2 + P3 |
+| **维护人** | R2 + R3 |
 | **依据** | TECH-09 §8.7；TECH-11 Bridge 成熟度 |
 
 ---
@@ -144,10 +144,10 @@ lab ops bridge-status --device franka-01
 
 ---
 
-## 六、 与 P3 衔接
+## 六、 与 R3 衔接
 
 - 设备 `status=blocked`（maintenance_policy）→ PreFlight 拒绝 bringup
-- 场地/layout 变更 → P3 更新 SceneManifest，**不**自动改 Bridge level
+- 场地/layout 变更 → R3 更新 SceneManifest，**不**自动改 Bridge level
 - 安全 SOP 二人规则不适用于 bringup（静态 smoke）；calibration 在 Z-FIX 时可单人
 
 ---

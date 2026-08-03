@@ -1,13 +1,14 @@
-# 平台架构 As-Built 说明 v1.0（Walking Skeleton 评审版）
+# 平台架构 As-Built 说明 v1.1（Walking Skeleton 评审版）
 
 | 属性 | 内容 |
 |------|------|
 | **文档编号** | TECH-14 |
-| **版本** | v1.0 |
+| **版本** | v1.1 |
 | **日期** | 2026-06-10 |
-| **维护人** | P2 |
+| **维护人** | R2 |
 | **用途** | 团队评审：**设计（TECH-09） vs 当前已实现（lab_platform）** |
-| **设计基线** | [TECH-09 platform_technical_architecture_v1.md](./platform_technical_architecture_v1.md) v1.0-approved |
+| **设计基线** | [TECH-09 platform_technical_architecture_v1.md](./platform_technical_architecture_v1.md) v1.1 |
+| **依据** | [governance_index_v1.md](../org/governance_index_v1.md) · [plan_review_w1.md](../meeting/plan_review_w1.md) |
 | **实现基线** | `lab_platform/` · [framework_skeleton_design_v1.md](../modules/framework_skeleton_design_v1.md) |
 | **验证命令** | `cd lab_platform && pip install -e . && lab init && lab demo full` |
 
@@ -25,7 +26,7 @@
 **评审目标**：
 1. 确认 Walking Skeleton 与 TECH-09 **模块边界一致**。
 2. 确认 **三条 Pipeline + LabOps 横切** 已在代码中可跑通。
-3. 确认 **Stub 替换清单** 可作为三人团队并行开发分工依据。
+3. 确认 **Stub 替换清单** 可作为团队并行开发分工依据。
 4. 确认 **缺口清单** 有明确优先级与负责人。
 
 ---
@@ -315,7 +316,7 @@ data/                           # lab init 生成（默认 lab_platform/data/）
 | Protocol | 当前实现 | 替换为 |
 |----------|----------|--------|
 | `IndexClient` | `IndexService` | 可选 HTTP 远程（ws-01→ws-02） |
-| `PreFlightGate` | `DefaultPreFlightGate` | 补全 PF 检查 + 接 P3 台账 API |
+| `PreFlightGate` | `DefaultPreFlightGate` | 补全 PF 检查 + 接 R3 台账 API |
 | `ResourceScheduler` | `DefaultResourceScheduler` | 队列/优先级策略 |
 | `IsaacLauncher` | `StubIsaacLauncher` | Isaac Lab 原生命令（TECH-13） |
 | `RealRuntime` | `StubRealRuntime` | F5/F6 ROS2 栈 |
@@ -358,17 +359,17 @@ Bridge 门槛（As-Built）：`real_eval` 启动要求 **L3**；成功后 Stub �
 
 | 优先级 | 缺口 | TECH-09 依据 | 建议负责人 |
 |--------|------|-------------|------------|
-| **P0** | `ros2_interface_v1.md` 重写 | §七 慢/快环 Topic | P2 |
-| **P0** | StubIsaacLauncher → 真 Isaac CLI | §5.2, TECH-13 | P2 |
-| **P1** | StubRealRuntime → F5/F6 ROS2 | §三 F5/F6, §七 | P2 |
-| **P1** | StubRos2Bridge → 真 run_context 节点 | §七 `/system/run_context` | P2 |
-| **P1** | RosbagRecorder 真实 mcap | §三 F7 Rosbag | P2 |
-| **P1** | real_bringup BU-01..06 真实检查 | §8.7, MDD-05 | P2+P3 |
-| **P2** | LabOpsMonitor 磁盘/GPU/延迟 | §8.6 | P2 |
-| **P2** | IndexService HTTP 化（ws-01 调 ws-02） | §2.3, §三 F7 部署 | P2 |
-| **P2** | Config Pin 自动 git commit | §三 横切 Config Pin | P2 |
-| **P2** | ws-02→onboard checkpoint 文件同步 | §2.1 文件同步 | P2 |
-| **P3** | P3 台账与 `device_capabilities` 联动 | §8.10 maintenance_policy | P3 |
+| **P0** | `ros2_interface_v1.md` 重写 | §七 慢/快环 Topic | R2 |
+| **P0** | StubIsaacLauncher → 真 Isaac CLI | §5.2, TECH-13 | R2 |
+| **P1** | StubRealRuntime → F5/F6 ROS2 | §三 F5/F6, §七 | R2 |
+| **P1** | StubRos2Bridge → 真 run_context 节点 | §七 `/system/run_context` | R2 |
+| **P1** | RosbagRecorder 真实 mcap | §三 F7 Rosbag | R2 |
+| **P1** | real_bringup BU-01..06 真实检查 | §8.7, MDD-05 | R2+R3 |
+| **P2** | LabOpsMonitor 磁盘/GPU/延迟 | §8.6 | R2 |
+| **P2** | IndexService HTTP 化（ws-01 调 ws-02） | §2.3, §三 F7 部署 | R2 |
+| **P2** | Config Pin 自动 git commit | §三 横切 Config Pin | R2 |
+| **P2** | ws-02→onboard checkpoint 文件同步 | §2.1 文件同步 | R2 |
+| **P3** | R3 台账与 `device_capabilities` 联动 | §8.10 maintenance_policy | R3 |
 
 ---
 
@@ -389,7 +390,7 @@ Bridge 门槛（As-Built）：`real_eval` 启动要求 **L3**；成功后 Stub �
 
 ### 9.3 分工与优先级
 - [ ] §八 Gap List 优先级与 RACI 一致
-- [ ] 三人并行切分（F7 / Isaac / Real / P3 registry）无重叠冲突
+- [ ] 核心团队并行切分（F7 / Isaac / Real / R3 registry）无重叠冲突
 
 ### 9.4 决议
 - [ ] **通过** → 进入 Stub 替换阶段（按 §十 路线图）
@@ -400,9 +401,9 @@ Bridge 门槛（As-Built）：`real_eval` 启动要求 **L3**；成功后 Stub �
 
 | 角色 | 姓名 | 日期 | 结论 |
 |------|------|------|------|
-| P1 | | | |
-| P2 | | | |
-| P3 | | | |
+| R1 | | | |
+| R2 | | | |
+| R3 | | | |
 
 ---
 
@@ -435,6 +436,15 @@ Phase 3 · 生产化（W5+）
 | Run/Artifact 规范 | `docs/data/run_id_spec.md` |
 | MDD 索引 | `docs/modules/README.md` |
 | 代码 README | `lab_platform/README.md` |
+
+---
+
+## 十一、 变更记录
+
+| 版本 | 日期 | 说明 |
+|------|------|------|
+| v1.0 | 2026-06-10 | Walking Skeleton 评审版 |
+| **v1.1** | 2026-07-09 | Gap 负责人 R2/R3；签字栏；核心团队分工表述 |
 
 ---
 

@@ -4,9 +4,9 @@
 |------|------|
 | **模块** | F5 Teleop · F6 大脑-小脑 · Rosbag |
 | **版本** | v1.0-skeleton |
-| **维护人** | P2 |
+| **维护人** | R2 |
 | **依据** | TECH-09 §三 F5/F6、§七 |
-| **阻塞依赖** | `ros2_interface_v1.md`（P1 阶段重写） |
+| **阻塞依赖** | `ros2_interface_v1.md`（阶段一重写） |
 
 ---
 
@@ -139,7 +139,7 @@ Topic 清单占位（待 ros2_interface 填充）：
 
 ## 八、 实施顺序（Real 栈）
 
-1. **ros2_interface_v1.md** 重写（P1）
+1. **ros2_interface_v1.md** 重写（阶段一）
 2. Driver Bridge base + 首设备 plugin（franka 或 go2 择一）
 3. real_bringup 联调 BU-01–06
 4. real_collect（Teleop + DemoRecorder）

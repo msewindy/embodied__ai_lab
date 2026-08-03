@@ -44,7 +44,7 @@
 | `task_id` | eval 脚本、policy 节点不知任务配置 | **v1.1 增加**（可选 string，deploy/eval 时填） |
 | `eval_protocol_id` | real_eval 节点需知指标协议 | **v1.1 增加**（real_eval 时必填） |
 | `scene_id` | real_eval 场景对齐 | **v1.1 增加**（real_eval 时必填） |
-| `project_id` | 多课题预留 | P2 可延后 |
+| `project_id` | 多课题预留 | R2 可延后 |
 
 ### 2.3 首台设备结论（RunContext）
 
@@ -134,9 +134,9 @@
 
 | 角色 | 姓名 | 日期 | 结论 |
 |------|------|------|------|
-| P1 | | | |
-| P2 | | | |
-| P3 | | | |
+| R1 | | | |
+| R2 | | | |
+| R3 | | | |
 
 ---
 

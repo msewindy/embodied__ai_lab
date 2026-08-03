@@ -2,9 +2,10 @@
 
 | 属性 | 内容 |
 |------|------|
-| **版本** | v1.0 |
-| **维护人** | P2 |
-| **架构基线** | TECH-09 v1.0-approved |
+| **版本** | v1.1 |
+| **维护人** | R2 |
+| **依据** | [governance_index_v1.md](../org/governance_index_v1.md) · [plan_review_w1.md](../meeting/plan_review_w1.md) |
+| **架构基线** | TECH-09 v1.1 |
 
 ---
 
@@ -49,7 +50,7 @@ lab test concurrency
 | Policy Registry | `docs/data/policy_registry_spec.md` |
 | Isaac Adapter | `docs/software/isaac_job_adapter_v1.md` |
 
-## 待 P1
+## 待 R1
 
 - `docs/software/ros2_interface_v1.md` 重写
 - `eval_protocol` YAML（`data/registry/eval_protocols/`）

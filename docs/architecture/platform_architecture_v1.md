@@ -1,10 +1,11 @@
-# 平台软件架构与部署拓扑图 (Platform Architecture) v1.0-draft
+# 平台软件架构与部署拓扑图 (Platform Architecture) v1.1
 
 | 属性 | 内容 |
 |------|------|
 | **文档编号** | TECH-05 |
-| **版本** | v1.0-draft |
-| **维护人** | P2 |
+| **版本** | v1.1 |
+| **维护人** | R2 |
+| **依据** | [governance_index_v1.md](../org/governance_index_v1.md) · [plan_review_w1.md](../meeting/plan_review_w1.md) · [version_matrix_v1.md](../software/version_matrix_v1.md) · [infra_plan_draft_v0.md](../infra/infra_plan_draft_v0.md) · [ros2_interface_v1.md](../software/ros2_interface_v1.md) · [run_id_spec.md](../data/run_id_spec.md) |
 | **说明** | 整合网络、算力、ROS2 接口与数据流的全局工程视图 |
 
 ---
@@ -22,7 +23,7 @@ graph TD
         direction TB
         
         subgraph WS02 ["lab-ws-02 (数据与大模型中心)"]
-            OS2["Ubuntu 22.04 + CUDA 12.1"]
+            OS2["Ubuntu 24.04 + CUDA 12.4+"]
             VLM["大模型推理 (Perception)"]
             Sim["Isaac Sim (仿真)"]
             Recorder["Rosbag 录制节点"]
@@ -30,7 +31,7 @@ graph TD
         end
 
         subgraph WS01 ["lab-ws-01 (实时控制主节点)"]
-            OS1["Ubuntu 22.04 + ROS2 Humble"]
+            OS1["Ubuntu 24.04 + ROS2 Jazzy"]
             PlanNode["规划节点 (Plan)"]
             SkillNode["技能节点 (Skill)"]
             SafetyNode["全局安全节点 (Safety)"]
@@ -95,9 +96,9 @@ graph TD
 
 ---
 
-## 二、 架构图解读 (P2 视角)
+## 二、 架构图解读 (R2 视角)
 
-本图将 P2 负责的 4 份文档（算力网络、ROS2接口、版本矩阵、数据规范）融为一体：
+本图将 R2 负责的 4 份文档（算力网络、ROS2接口、版本矩阵、数据规范）融为一体：
 
 1. **部署拓扑 (对应 `infra_plan_draft_v0.md`)**：
    - 清晰展示了 `lab-ws-01` 负责轻量级高实时性任务（Plan/Skill/Safety）。
@@ -109,7 +110,16 @@ graph TD
    - 物理急停按钮的 GPIO 信号如何接入 Safety 节点形成了闭环。
 
 3. **版本与基线 (对应 `version_matrix_v1.md`)**：
-   - 节点框内直接标明了 OS 和中间件的基线要求（Ubuntu 22.04 + ROS2 Humble / CUDA 12.1）。
+   - 节点框内直接标明了 OS 和中间件的基线要求（Ubuntu 24.04 + ROS2 Jazzy / CUDA 12.4+）。
 
 4. **实验追溯 (对应 `run_id_spec.md`)**：
    - 左下角的流水线展示了代码版本（Git Hash）如何通过 `gen_run_id.py` 注入到录包节点（Recorder），最终落盘到存储中。
+
+---
+
+## 三、 变更记录
+
+| 版本 | 日期 | 说明 |
+|------|------|------|
+| v1.0-draft | 2026-06 | 首版架构拓扑图 |
+| **v1.1** | 2026-07-09 | 软件基线 24.04/Jazzy；角色口径 R2；对齐 W1 冻结决策 |

@@ -3,8 +3,8 @@
 | 属性 | 内容 |
 |------|------|
 | **文档编号** | GOV-07 |
-| **版本** | v1.0-draft |
-| **维护人** | P1 |
+| **版本** | v1.1 |
+| **维护人** | R1 |
 
 ---
 
@@ -12,13 +12,13 @@
 
 | 层级 | 目录 | 内容 | 维护方 |
 |------|------|------|--------|
-| **L0** | 根目录 | 总体方案 | P1 |
-| **L1** | `docs/architecture/` | 系统架构蓝图 | P1 |
-| **L2** | `docs/org/` `docs/process/` | 制度与流程 | P1 |
-| **L3** | `docs/infra/` `docs/software/` | 网络、算力、接口规范 | P2 |
-| **L4** | `docs/layout/` `docs/safety/` | 场地平面图、安全 SOP | P3 |
-| **L5** | `docs/assets/` | 资产台账 | P3 |
+| **L0** | 根目录 | 总体方案 | R1 |
+| **L1** | `docs/architecture/` | 系统架构蓝图 | R1 |
+| **L2** | `docs/org/` `docs/process/` | 制度与流程 | R1 |
+| **L3** | `docs/infra/` `docs/software/` | 网络、算力、接口规范 | R2 |
+| **L4** | `docs/layout/` `docs/safety/` | 场地平面图、安全 SOP | R3 |
+| **L5** | `docs/device/` | 设备清单、维护制度 | R3 |
 
 ## 二、版本控制原则
-- 所有文档必须存放在 Git 仓库中（待 P2 初始化 monorepo）。
+- 所有文档必须存放在 Git 仓库中（待 R2 初始化 monorepo）。
 - 纲领性文件（如总体方案、架构蓝图）升版必须走 CR 流程。

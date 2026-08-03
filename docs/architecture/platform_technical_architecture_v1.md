@@ -1,13 +1,13 @@
-# 具身智能平台详细技术架构 v1.0-draft
+# 具身智能平台详细技术架构 v1.1
 
 
 | 属性       | 内容                                                                                                         |
 | -------- | ---------------------------------------------------------------------------------------------------------- |
 | **文档编号** | TECH-09                                                                                                    |
-| **版本**   | v1.0-approved                                                                                              |
-| **维护人**  | P2                                                                                                         |
-| **评审**   | 2026-06-10 · P1/P2/P3 短评审通过（见 `docs/meeting/tech09_review_v1.md`）                                          |
-| **前置依据** | [平台软件架构详细设计（功能架构）](./platform_detailed_design_v1.md)                                                       |
+| **版本**   | v1.1                                                                                              |
+| **维护人**  | R2                                                                                                         |
+| **评审**   | 2026-06-10 · R1/R2/R3 短评审通过（见 `docs/meeting/tech09_review_v1.md`）                                          |
+| **依据** | [governance_index_v1.md](../org/governance_index_v1.md) · [plan_review_w1.md](../meeting/plan_review_w1.md) · [平台软件架构详细设计（功能架构）](./platform_detailed_design_v1.md) |
 | **下游文档** | `run_id_spec.md`、`preflight_checklist_spec.md`、`policy_registry_spec.md`、`isaac_job_adapter_v1.md`、各模块 MDD |
 
 
@@ -16,14 +16,14 @@
 ## 一、 文档定位与设计分层
 
 ```
-P1  blueprint_v0          逻辑契约（Why / 边界）
+R1  blueprint_v0          逻辑契约（Why / 边界）
         ↓
-P2  platform_detailed_design_v1   功能架构（What / 子系统 / 生命周期）
+R2  platform_detailed_design_v1   功能架构（What / 子系统 / 生命周期）
         ↓
-P2  platform_technical_architecture_v1  ← 本文档
+R2  platform_technical_architecture_v1  ← 本文档
         详细技术架构（How / 模块 / 交互 / Run 产物）
         ↓
-P2  ros2_interface_v1 / run_id_spec / policy_registry_spec
+R2  ros2_interface_v1 / run_id_spec / policy_registry_spec
         接口与数据规范（字段级 / Topic 级）
 ```
 
@@ -422,7 +422,7 @@ Run 会结束，**Artifact 持久存在**并被下游引用。用户通过 Artif
 | Artifact | 代码                    | 生产者                   | 消费者                          | 核心内容                                         |
 | -------- | --------------------- | --------------------- | ---------------------------- | -------------------------------------------- |
 | **标定包**  | `CalibrationArtifact` | `calibration_session` | PreFlight、`real_deploy/eval` | 外参/手眼/零位、valid_until                         |
-| **场景清单** | `SceneManifest`       | P3 场地登记 + eval 前确认    | `real_eval`、PreFlight        | layout_version、object_poses、eval_protocol_id |
+| **场景清单** | `SceneManifest`       | R3 场地登记 + eval 前确认    | `real_eval`、PreFlight        | layout_version、object_poses、eval_protocol_id |
 
 
 **policy_manifest.yaml（示例字段，待 policy_registry_spec 导出）**：
@@ -635,11 +635,11 @@ flowchart TB
 
 | 检查项                            | 数据源                                   | 适用 Pipeline    | 失败处理                |
 | ------------------------------ | ------------------------------------- | -------------- | ------------------- |
-| 设备 `status != blocked`         | P3 资产台账                               | B, C           | 拒绝启动，写 audit        |
+| 设备 `status != blocked`         | R3 资产台账                               | B, C           | 拒绝启动，写 audit        |
 | 标定未过期                          | CalibrationRegistry                   | B（deploy/eval） | 拒绝或降级为 collect-only |
 | `scene_id` 已登记（eval 时）         | SceneRegistry                         | B（eval）        | 拒绝 eval             |
 | 场地/并发未超限                       | ResourceScheduler                     | B              | 拒绝或排队               |
-| `experiment_plan_id` + risk 审批 | P1 experiment_workflow                | B（medium/high） | 拒绝                  |
+| `experiment_plan_id` + risk 审批 | R1 experiment_workflow                | B（medium/high） | 拒绝                  |
 | SOP 二人规则确认                     | 实验计划 metadata                         | B（动态实验）        | 拒绝                  |
 | `check_env` 版本一致               | version_matrix                        | A, B, C        | 拒绝                  |
 | Policy↔Device 兼容               | DeviceCapability + CompatibilityCheck | B（deploy/eval） | 拒绝                  |
@@ -656,7 +656,7 @@ flowchart TB
 
 ### 8.3 ResourceScheduler（资源调度与锁）
 
-落实 P1 **「最大 2 台并发动态实验」** 及算力互斥。
+落实 R1 **「最大 2 台并发动态实验」** 及算力互斥。
 
 
 | 锁类型             | 粒度               | 规则示例                            |
@@ -888,7 +888,7 @@ data/
 
 ---
 
-## 十二、 实施路线 (P2)
+## 十二、 实施路线 (R2)
 
 ### 已完成（2026-06-10）
 
@@ -896,16 +896,25 @@ data/
 - P0 规范：`run_id_spec`、`preflight_checklist_spec`、`device_capability_matrix_v1`、`policy_registry_spec`、`isaac_job_adapter_v1`
 - MDD 启动：`F7_run_manager`、`F7_index_service`、`isaac_job_adapter`、`pipeline_c_ops`、`F6_real_stack`（骨架）
 
-### P1 — W2–W4
+### 阶段一 — W2–W4
 
 1. 重写 `ros2_interface_v1.md`（Pipeline B + `/system/health`）。
 2. `eval_protocol` 共用 YAML + `CompatibilityCheck` 实现。
 3. LabOpsMonitor 首版（日志阈值 + 磁盘/GPU 告警）。
 
-### P2 — 项目接入期
+### 阶段二 — 项目接入期
 
 1. `project_id` 权限与 Artifact 退役策略。
 2. `calibration_registry_spec`、`digital_twin_binding_spec`。
+
+---
+
+## 十三、 变更记录
+
+| 版本 | 日期 | 说明 |
+|------|------|------|
+| v1.0-approved | 2026-06-10 | 短评审通过 |
+| **v1.1** | 2026-07-09 | 角色口径 R1–R3；实施路线「阶段一/二」命名；对齐 W1 冻结决策 |
 
 ---
 

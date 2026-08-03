@@ -112,7 +112,7 @@ data/                   # lab init 创建
 | Isaac | `StubIsaacLauncher` | adapter 收录逻辑 |
 | Real F5 | `StubRealRuntime.collect` | Run 目录契约 |
 | Real F6 | `StubRealRuntime.deploy/eval` | PreFlight PF-12 |
-| P3 | `data/registry/*.yaml` | PreFlight 读接口 |
+| R3 | `data/registry/*.yaml` | PreFlight 读接口 |
 | Pipeline C | bringup 检查 BU-01..06 | Run 登记流程 |
 
 ---

@@ -1,11 +1,11 @@
-# 实验室环境安装与验收清单 v1.0
+# 实验室环境安装与验收清单 v1.1
 
 | 属性 | 内容 |
 |------|------|
 | **文档编号** | INFRA-01 |
-| **版本** | v1.0 |
-| **维护人** | P2 |
-| **依据** | [TECH-04 版本矩阵](../software/version_matrix_v1.md) · [TECH-03 网络规划](./infra_plan_draft_v0.md) · [TECH-02 ROS2 接口](../software/ros2_interface_v1.md) · [TECH-09 技术架构](../architecture/platform_technical_architecture_v1.md) |
+| **版本** | v1.1 |
+| **维护人** | R2 |
+| **依据** | [governance_index_v1.md](../org/governance_index_v1.md) · [plan_review_w1.md](../meeting/plan_review_w1.md) · [TECH-04 版本矩阵](../software/version_matrix_v1.md) · [TECH-03 网络规划](./infra_plan_draft_v0.md) · [TECH-02 ROS2 接口](../software/ros2_interface_v1.md) · [TECH-09 技术架构](../architecture/platform_technical_architecture_v1.md) |
 | **用途** | 三节点（ws-02 / ws-01 / onboard）从零配置到可跑 **Walking Skeleton + Go2 real_bringup** 的可执行清单 |
 
 ---
@@ -602,11 +602,11 @@ grep quadruped-01 /opt/lab/data/registry/bridge_maturity.yaml
 
 | 节点 | 负责人 | 安装完成日 | 验收命令 ID | 签字 |
 |------|--------|------------|-------------|------|
-| 网络 / NAS | P2 | | §一 | |
-| lab-ws-02 | P2 | | E1, E5 | |
-| lab-ws-01 | P2 | | E2, E3 | |
-| Go2 onboard | P2+P3 | | E4, E7 | |
-| 安全 ESTOP | P3 | | BU-05 实机 | |
+| 网络 / NAS | R2 | | §一 | |
+| lab-ws-02 | R2 | | E1, E5 | |
+| lab-ws-01 | R2 | | E2, E3 | |
+| Go2 onboard | R2+R3 | | E4, E7 | |
+| 安全 ESTOP | R3 | | BU-05 实机 | |
 
 ---
 
@@ -627,6 +627,7 @@ grep quadruped-01 /opt/lab/data/registry/bridge_maturity.yaml
 | 版本 | 日期 | 说明 |
 |------|------|------|
 | **v1.0** | 2026-06-11 | 首版：ws-02/01/onboard 分列安装与验收；对齐 Go2 首台 real_bringup |
+| **v1.1** | 2026-07-09 | 角色口径 R1–R3；验收签字表对齐 RACI |
 
 ---
 

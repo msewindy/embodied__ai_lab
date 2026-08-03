@@ -6,7 +6,7 @@
 | **文档** | TECH-14 `platform_architecture_as_built_v1.md` |
 | **演示环境** | Windows · Python 3.11 · `lab_platform/` |
 | **自动化验收** | **通过** |
-| **正式决议** | 待 P1/P2/P3 签字确认 Phase 2 启动 |
+| **正式决议** | 待 R1/R2/R3 签字确认 Phase 2 启动 |
 
 ---
 
@@ -120,9 +120,9 @@ OK: third Z-DYN deploy rejected: Z-DYN concurrent limit (2) exceeded
 
 | 角色 | 姓名 | 日期 | 结论 |
 |------|------|------|------|
-| P1 | | | |
-| P2 | | | |
-| P3 | | | |
+| R1 | | | |
+| R2 | | | |
+| R3 | | | |
 
 ---
 

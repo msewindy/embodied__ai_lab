@@ -1,10 +1,11 @@
-# 软件版本矩阵 v1.0-draft
+# 软件版本矩阵 v1.2
 
 | 属性 | 内容 |
 |------|------|
 | **文档编号** | TECH-04 |
-| **版本** | v1.0-draft |
-| **维护人** | P2 |
+| **版本** | v1.2 |
+| **维护人** | R2 |
+| **依据** | [PLAN-FUSION-01](../plan/platform_wm_fusion_plan_v0.md) · INFRA-01/02 · 世界模型 FR3 §1.0 钉扎（本地挂载） |
 
 ---
 
@@ -14,9 +15,9 @@
 
 | 组件 | 版本要求 | 备注 |
 |------|----------|------|
-| **OS** | Ubuntu 24.04 LTS (Noble Numbat) | 原生搭载 6.8+ 内核，完美支持 9950X3D 调度与 5090D 驱动。全量节点统一升级。 |
-| **ROS 2** | Jazzy Jalisco | Ubuntu 24.04 对应的长期支持版 (LTS，支持至 2029 年)。 |
-| **Python** | 3.12.x | Ubuntu 24.04 默认版本。具身智能策略框架强依赖。 |
+| **OS** | Ubuntu 24.04 LTS (Noble Numbat) | 原生搭载 6.8+ 内核；全量节点统一。 |
+| **ROS 2** | Jazzy Jalisco | 仅 **lab-ws-01 / onboard**；**ws-02 不进 ROS 域**。 |
+| **Python** | **3.12.x** | 与 Isaac Sim 6.x / 策略栈对齐。 |
 | **C++ Standard**| C++17 / C++20 | 编译 ROS2 Jazzy 节点的标准。 |
 
 ---
@@ -27,22 +28,25 @@
 
 | 组件 | 版本要求 | 备注 |
 |------|----------|------|
-| **NVIDIA Driver**| >= 560.x | 必须使用 560 或更新分支以支持 RTX 50 系列架构。 |
-| **CUDA Toolkit** | 12.4.x (或更高) | 匹配新版驱动与 PyTorch。 |
-| **cuDNN** | 9.x | 匹配 CUDA 12.4+。 |
-| **PyTorch** | >= 2.4.x (cu124) | 兼容 Python 3.12 与最新 CUDA。 |
+| **NVIDIA Driver**| **≥ 560.x**（建议生产分支 **≥580.x** 若 Isaac 兼容检查器要求） | RTX 50 系列；以 Isaac 官方兼容矩阵为准 |
+| **CUDA Toolkit** | 随 Isaac Lab / PyTorch 轮子 | **勿**另装冲突的系统 CUDA 强绑 |
+| **cuDNN** | 随 PyTorch 轮子 | — |
+| **PyTorch** | **2.10.x + cu128**（x86_64）优先；最低 ≥2.4 cu124 | **以 Isaac Lab 发行说明为准**；钉扎后写入 run manifest |
 
 ---
 
 ## 三、具身智能仿真与策略开发基线 (Embodied AI)
 
-补齐具身智能从仿真到现实 (Sim2Real) 策略落地的全链路工具栈：
-
 | 组件 | 版本要求 | 备注 |
 |------|----------|------|
-| **Isaac Sim** | 6.0.0 | NVIDIA 2026 年最新版，支持多物理引擎后端与异步渲染。 |
-| **Isaac Lab** | 3.0.0-beta | (原 Orbit) 基于 Isaac Sim 6.0 的统一机器人学习框架，支持强化学习与模仿学习。 |
-| **DDS 实现** | Cyclone DDS | 替换默认的 FastDDS，解决多机大流量丢包问题。 |
+| **Isaac Sim** | **6.0.x**（如 6.0.0 / 6.0.1） | Phase-1 FR3 主仿真；**禁止**混用 5.1 及更旧 |
+| **Isaac Lab** | **release/3.0.0-beta2** 或其后同线稳定标签 | 与 Sim 6.0 配对；首次跑通后 **commit/tag 写入 run manifest** |
+| **DDS 实现** | Cyclone DDS | 仅 Real 域（ws-01/onboard） |
+| **主任务 / 场景** | `tabletop_pickplace_v0` · device `franka-01` | 取代 Go2 `velocity_rough` 作为 Phase-1 主路径 |
+| **LeRobot** | Dataset **v3.0** 兼容发布版 | 采数主路径；精确 pip 版本写入 manifest |
+| **回归任务** | Go2 locomotion（既有） | 不计入 Phase-1 融合 Go |
+
+**纪律**：未完成环境钉扎与 INFRA-02 **M2（FR3 Hello）** 前，不并行维护第二套仿真（MuJoCo 等）。版本变更须改本表并升 TECH-04 小版本。
 
 ---
 
@@ -120,7 +124,29 @@ graph TD
 
 ---
 
-## 五、版本变更控制 (CR)
+## 五、Phase-1 节点角色与版本落点
 
-- **Minor 升级** (如 Python 3.12.2 -> 3.12.4)：P2 自行决定，无需审批。
-- **Major 升级** (如 ROS2 Jazzy -> Kilted，或 Isaac Sim 大版本更新)：**必须走 CR 流程**，由 P1 审批，并需提供所有设备的回归测试报告。
+| 节点 | 必装 | 不装 / 禁止 |
+|------|------|-------------|
+| **lab-ws-02** | Ubuntu 24.04 · Driver · Isaac Sim 6 · Isaac Lab 3 线 · PyTorch · lab_platform | **ROS2 域内节点**；勿日常 export `ROS_DOMAIN_ID` |
+| **lab-ws-01** | Ubuntu 24.04 · ROS2 Jazzy · Cyclone · lab_platform · ros2 工作区 | 不强制装完整 Isaac（可只作消费端） |
+| **FR3 真机工控** | Phase-2：`libfranka` / `franka_ros2` · Jazzy | Phase-1 以 Isaac 为主 |
+| **Go2 onboard** | 回归用；非 Phase-1 主路径 | 真机动态实验受安全门禁约束 |
+
+---
+
+## 六、版本变更控制 (CR)
+
+- **Minor 升级** (如 Python 3.12.2 -> 3.12.4)：R2 自行决定，无需审批；仍建议记入 manifest。
+- **Major 升级** (如 ROS2 Jazzy -> Kilted，或 Isaac Sim 大版本更新)：**必须走 CR**，由 R1 审批，并需提供回归（至少 INFRA-02 M2 + R-Go2 E3）。
+- **Isaac Lab tag 变更**：升 TECH-04 小版本，并更新 INFRA-02 进度备注。
+
+---
+
+## 七、变更记录
+
+| 版本 | 日期 | 说明 |
+|------|------|------|
+| v1.0-draft | 2026-06 | 首版；24.04/Jazzy 基线 |
+| v1.1 | 2026-07-09 | 维护人/审批人 R1/R2 |
+| **v1.2** | 2026-08-03 | 对齐 PLAN-FUSION-01 / FR3；Isaac·PyTorch 钉扎加严；主任务改桌面抓放；增 §五节点落点 |

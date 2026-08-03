@@ -1,12 +1,13 @@
-# 统一 ROS2 消息接口规范 v1.0
+# 统一 ROS2 消息接口规范 v1.2
 
 | 属性 | 内容 |
 |------|------|
 | **文档编号** | TECH-02 |
-| **版本** | v1.1 |
-| **维护人** | P2 |
-| **依据** | [TECH-09](../architecture/platform_technical_architecture_v1.md) v1.0-approved §二、§七；[TECH-12](../data/policy_registry_spec.md)；[version_matrix_v1.md](./version_matrix_v1.md) |
-| **适用范围** | **Pipeline B/C**（Real 运行时）；**不含** Pipeline A（Isaac，ws-02 无 ROS2） |
+| **版本** | v1.2 |
+| **维护人** | R2 |
+| **依据** | [PLAN-FUSION-01](../plan/platform_wm_fusion_plan_v0.md) · [governance_index_v1.md](../org/governance_index_v1.md) · [TECH-09](../architecture/platform_technical_architecture_v1.md) · [TECH-12](../data/policy_registry_spec.md) · [version_matrix_v1.md](./version_matrix_v1.md) |
+| **适用范围** | **Pipeline B/C**（Real 运行时）；Pipeline A（Isaac）**语义对齐但不跑 ROS2**（见 §3.3.1） |
+| **主锚点设备** | `franka-01`（FR3）；`quadruped-01` 仍用既有 SkillIntent/cmd_vel |
 | **实现包** | `embodied_lab_msgs`（自定义 msg/srv）· `embodied_lab_bringup`（launch） |
 
 ---
@@ -156,17 +157,68 @@ float32[] joint_torque
 std_msgs/Header header
 string device_id
 string run_id
-string source                  # teleop | policy_high | plan
-string skill_mode              # idle | teleop | policy | hold
+string source                  # teleop | policy_high | plan | mid
+string skill_mode              # idle | teleop | policy | hold | task_space
 float32[] target_joint_pos     # 与 policy_manifest.action_schema 对齐
 float32[] target_joint_vel
 float32[] target_joint_torque
 float32[] kp
 float32[] kd
 geometry_msgs/Twist cmd_vel    # locomotion 时使用
+# --- v1.2：manipulation / FR3（与世界模型 TaskSpaceCommand 对齐）---
+float32[6] ee_delta            # dx,dy,dz,droll,dpitch,dyaw；基座系相对增量
+float32 gripper                # [0,1]；0=开 1=闭（宽度映射见设备契约）
+uint8 control_mode             # 0=UNUSED 1=POSE 2=IMPEDANCE
+uint32 expire_ms               # 无新令时 Low HOLD；默认 150–200
+string frame_id                # 默认 fr3_link0 / 臂基座
 ```
 
-> **policy_manifest** 中 `action_schema.fields[].target` 默认映射至 `/skill/{device_id}/intent` 对应数组字段。
+> **policy_manifest** 中 `action_schema.fields[].target` 默认映射至 `/skill/{device_id}/intent` 对应数组字段。  
+> **FR3 Phase-1**：策略/中层主输出为 **`ee_delta` + `gripper`**（`skill_mode=task_space`）；**禁止**策略直接下发关节扭矩作主路径。  
+> **Go2 回归**：继续用 `cmd_vel` / 关节字段；`ee_delta` 置零即可。
+
+#### 3.3.1 TaskSpaceCommand / LowStateFeedback（语义契约 · 仿真与真机同构）
+
+Pipeline A（Isaac，ws-02）**不发布 ROS2 Topic**，但 Agent Runtime 与日后 Real Bridge **必须使用同一语义**。数值/ε/Scene 以 `external/world_model/docs/FR3*.md` 为 SSOT。
+
+```text
+TaskSpaceCommand  (Mid → Low)
+  stamp, frame_id
+  ee_delta[6], gripper, control_mode, expire_ms
+  stiffness_hint?, max_force?
+
+LowStateFeedback  (Low → Mid)
+  stamp
+  ee_pose_actual[7], ee_pose_desired[7]   # pos+quat 或约定同构表示
+  q[7], dq[7]
+  tau_ext[7]?, wrench_ee[6]               # FR3：估计外力；无独立腕 F/T
+  gripper_width, tracking_error, contact_flag
+  ik_status, safety_event, backend, latency_ms
+```
+
+| 时钟（默认） | 值 | 说明 |
+|--------------|-----|------|
+| `control_hz` | 50（20–100） | Low / 遥操作下发 |
+| `mid_hz` / `record_fps` | 10 | Mid 决策与学习特征抽帧 |
+
+**Real 侧 Topic 建议（Phase-2 落地 Bridge 时）**：
+
+| Topic | Message | 方向 |
+|-------|---------|------|
+| `/skill/{device_id}/task_command` | `SkillIntent`（task_space）或后续拆出的 `TaskSpaceCommand.msg` | Mid→Low |
+| `/perception/{device_id}/low_state` | `embodied_lab_msgs/LowStateFeedback`（待加 msg） | Low→Mid |
+
+Phase-1 仿真允许进程内结构体/ Python dataclass 先实现，**字段名与上表对齐**；升 Real 时再固化 `.msg`。
+
+### 3.3.2 RobotState 扩展（manipulation 最小集）
+
+`RobotState.msg` **追加可选字段**（locomotion 可填 0）：
+
+```text
+float32[7] ee_pose             # 末端位姿（与 Low 约定一致）
+float32[6] wrench_ee           # 估计外力/力矩
+float32 gripper_width
+```
 
 ### 3.4 Teleop — collect 专用（F5）
 
@@ -243,14 +295,15 @@ float32 speed_scale            # WARN 时 [0,1] 限速比例
 
 | 方向 | 接口 | 说明 |
 |------|------|------|
-| 订阅 | `/internal/{device_id}/joint_command_limited` | 唯一控制输入 |
+| 订阅 | `/internal/{device_id}/joint_command_limited` **或** task_space 限幅后指令 | Go2：关节/cmd；**FR3：笛卡尔/阻抗指令由 Low 生成** |
 | 订阅 | `/safety/global_state`, `/safety/{device_id}/local_state` | 安全覆盖 |
 | 订阅 | `/system/run_context` | 实验上下文 |
-| 发布 | §3.1 Perception Topic（按 device_capabilities.sensors） | 传感器最小集 |
+| 发布 | §3.1 Perception Topic（按 device_capabilities.sensors） | 传感器最小集；FR3 含 `low_state`/`wrench` 估计 |
 | 发布 | `/system/health` | 1 Hz |
-| Service | `embodied_lab_msgs/srv/BridgetSmoke` | bringup BU-01..06 使用 |
+| Service | `embodied_lab_msgs/srv/BridgeSmoke` | bringup BU-01..06 使用 |
 
-**禁止**：在 ws-01 上 import 厂商 SDK 直接控电机。
+**禁止**：在 ws-01 上 import 厂商 SDK 直接控电机。  
+**FR3 Phase-1**：允许 Isaac `WorldBackend` 充当仿真 Bridge；真机 `franka_driver_bridge` Phase-2。
 
 ---
 
@@ -353,13 +406,14 @@ graph LR
 
 | 阶段 | 任务 | 产出 |
 |------|------|------|
-| **P2-1** | 创建 `embodied_lab_msgs` 包，编译 §二–§五 msg | `.msg` / `.srv` |
-| **P2-2** | `StubRos2Bridge` → 真 `run_context` 发布节点 | 替换 skeleton stub |
-| **P2-3** | Driver Bridge 首设备（quadruped-01 或 franka-01） | BU-01..06 通过 |
+| **已完成** | `embodied_lab_msgs` + Go2 Bridge L1（sim） | E2/E3 历史通过 |
+| **F-1**（当前） | SkillIntent 扩展字段 + 仿真侧 TaskSpace/LowState 结构对齐 | INFRA-02 **M2** |
+| **F-2** | Isaac WorldBackend + RunManager 挂 `tabletop_pickplace_v0` | INFRA-02 **M3–M4** |
+| **F-3** | `.msg` 固化 `LowStateFeedback`；`franka_driver_bridge` | Phase-2 Real |
 | **P2-4** | F6B/F6C 慢快环联调 | real_deploy smoke |
 | **P2-5** | RosbagRecorder 按 §九 录制 | 替换 stub .mcap |
 
-**验收**：`real_bringup` 全节点 `/system/health`=OK；`real_deploy` SkillIntent 环延迟 p99 ≤ 100 ms（局域网）。
+**Phase-1 验收**：以 INFRA-02 M2～M6 为准（仿真语义闭环），不以 Go2 真机为准。
 
 ---
 
@@ -368,9 +422,10 @@ graph LR
 | 版本 | 日期 | 说明 |
 |------|------|------|
 | v1.0-draft | — | 早期 draft，未对齐 TECH-09 Run 模型 |
-| **v1.0** | 2026-06-11 | 按 TECH-09 §七 重写：慢/快环、run_context、Pipeline B/C only |
-| **v1.1** | 2026-06-11 | RunContext 增 task_id/eval_protocol_id/scene_id；operator→operator_id（C++ 保留字）；首设备 Go2 |
+| v1.0 | 2026-06-11 | 按 TECH-09 §七 重写：慢/快环、run_context、Pipeline B/C only |
+| v1.1 | 2026-06-11 | RunContext 增 task_id/eval_protocol_id/scene_id；operator→operator_id；首设备 Go2 |
+| **v1.2** | 2026-08-03 | **FR3 主锚点**；SkillIntent 增 ee_delta/gripper/control_mode；§3.3.1 TaskSpace 语义；对齐 PLAN-FUSION-01 |
 
 ---
 
-*TECH-02 | ros2_interface_v1 · 依据 TECH-09 approved*
+*TECH-02 v1.2 | ros2_interface · PLAN-FUSION-01 + TECH-09*

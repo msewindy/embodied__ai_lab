@@ -61,3 +61,8 @@ secrets.yaml
 tmp/
 temp/
 .cache/
+
+# --- 本地外部挂载（Directory Junction / symlink；源目录在仓库外）---
+# 只忽略挂载点，保留 external/README.md 与建链说明
+/external/world_model/
+/external/world_model

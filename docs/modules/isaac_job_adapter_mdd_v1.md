@@ -4,7 +4,7 @@
 |------|------|
 | **模块** | F2/F3/F4 统一入口 · IsaacJobAdapter |
 | **版本** | v1.0-draft |
-| **维护人** | P2 |
+| **维护人** | R2 |
 | **依据** | TECH-09 §5.2；TECH-13 `isaac_job_adapter_v1.md` |
 
 ---
@@ -104,7 +104,7 @@ class OutputScanner:
 
 ## 六、 配置：isaac_entry.yaml
 
-每个 `task_id` 必须提供；缺失则 adapter 拒绝运行并提示 P2 补 F1 task_manifest。
+每个 `task_id` 必须提供；缺失则 adapter 拒绝运行并提示 R2 补 F1 task_manifest。
 
 模板见 `isaac_job_adapter_v1.md` §四。
 
