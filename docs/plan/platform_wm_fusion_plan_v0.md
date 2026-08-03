@@ -3,11 +3,11 @@
 | 属性 | 内容 |
 |------|------|
 | **文档编号** | PLAN-FUSION-01 |
-| **版本** | v0.2 |
+| **版本** | v0.3 |
 | **日期** | 2026-08-03 |
 | **维护人** | R1 |
-| **状态** | **working-baseline**（工作基线 · 指导 INFRA-02 / TECH-02 / TECH-04） |
-| **关联** | L0 总体方案 · TECH-09/14 · **INFRA-02 v1.2** · 世界模型 FR3 设计（本地挂载） |
+| **状态** | **working-baseline**（工作基线 · 指导 INFRA-02 / TECH-02 / TECH-04 / TECH-09） |
+| **关联** | L0 总体方案 · TECH-09/14 · **INFRA-02 v1.3** · 世界模型 FR3 设计（本地挂载） |
 
 ---
 
@@ -31,7 +31,7 @@
 | **约束** | INFRA-02 主验收路径、TECH-02 manipulation 扩展、TECH-04 Isaac/FR3 钉扎以本文 §2 / §4 为准 |
 | **不替代** | L0「框架优先」宪法；不把研究 H1–H5 写成框架 Go |
 | **变更** | 修订分层或 Phase-1 出口须走 CR，升本文小版本 |
-| **已落地配套** | INFRA-02 **v1.2** · TECH-02 **v1.2** · TECH-04 **v1.2**（同日） |
+| **已落地配套** | INFRA-02 **v1.3** · TECH-02/04/09 双模式修订（同日） |
 
 ---
 
@@ -60,11 +60,22 @@
 [ L1 Agent Control Runtime — 世界模型三层 ]
   High(薄) · Mid(厚) · Low(契约)
   WorldBackend in {isaac_sim, franka_real}
-              |  TaskSpaceCommand / LowStateFeedback
+  控制仿真(CTRL-SIM): ROS2 同构 · DOMAIN=43 · lab-ws-02
+  真机: ROS2 · DOMAIN=42 · ws-01 + 臂
+              |  TaskSpaceCommand / LowStateFeedback（同一 msg）
               v
 [ L2 本体与场景 ]
   FR3 + Hand · Scene tabletop_pickplace_v0 · 虚拟相机
 ```
+
+### 2.0 lab-ws-02 双模式（v0.3 修正）
+
+| 模式 | ROS2 | DOMAIN | 用途 |
+|------|:----:|--------|------|
+| **CTRL-SIM** | **开** | **43** | Phase-1 主路径：与真机控制图同构 |
+| **BATCH** | 可不启 | — | 大规模训练/数据工厂 |
+
+废止旧表述「ws-02 全程禁止 ROS2」。批处理仍可无 ROS；**控制验证必须同构**。真机域 **42** 与仿真域 **43** 禁止混用。
 
 ### 2.1 职责边界
 
@@ -78,8 +89,9 @@
 
 | 本仓库概念 | 世界模型侧 | 融合动作 |
 |------------|------------|----------|
-| Pipeline A（Isaac） | `WorldBackend=isaac_sim` | 示范任务从 Go2 velocity → FR3 桌面抓放 |
-| Pipeline B（Real） | `WorldBackend=franka_real` | 后期；消息契约与仿真同构 |
+| Pipeline A / CTRL-SIM | `WorldBackend=isaac_sim` | FR3 桌面；**ROS2 DOMAIN 43** 与真机同 Topic |
+| Pipeline B（Real） | `WorldBackend=franka_real` | DOMAIN 42；消息契约与仿真同构 |
+| BATCH 训练 | （可无 ROS） | 不替代 CTRL-SIM 验收 |
 | F6 大脑（慢环） | High + Mid | 大脑进程挂 Agent Runtime；**不**把 Mid 拆进 RunManager |
 | F6 小脑 / Driver Bridge | Low + 限幅 | 新增 `franka_*` Bridge，实现 Δpose 契约 |
 | RunManager | 实验生命周期 | 管 start/stop/pin/archive；不管关节/Δpose |
@@ -170,9 +182,10 @@
 
 | 对象 | 变更 | 状态 |
 |------|------|:----:|
-| INFRA-02 / Phase 1 | 主验收路径：**Go2 → FR3 Isaac 桌面抓放**；Go2 改为回归 | **v1.2 已改** |
-| TECH-02 | 冻结 manipulation：`TaskSpaceCommand` / `LowStateFeedback` | **v1.2 已改** |
-| TECH-04 版本矩阵 | 对齐 Isaac Sim 6.x / Lab 3.0 线、FR3 钉扎备注 | **v1.2 已改** |
+| INFRA-02 / Phase 1 | FR3 CTRL-SIM；M2–M6 详细技术方案；DOMAIN 43 | **v1.3 已改** |
+| TECH-02 | TaskSpace + 仿真域说明 | **v1.3 已改** |
+| TECH-04 | Isaac 钉扎 + DOMAIN 42/43 + 双模式 | **v1.3 已改** |
+| TECH-09 | 废止「ws-02 全程无 ROS2」；改为双模式 | **已改** |
 | `ros2/` | 新增 `franka_driver_bridge`（或等价）；Go2 包保留 | 待工程 |
 | Isaac Job / 示范任务 | 注册 `tabletop_pickplace_v0`（或等价 task id） | 待工程 |
 | master_wbs | 插入 F1-0…F1-6；原「仅 Go2 L1」条目降级或后置 | P1 文档批 |
@@ -218,6 +231,7 @@
 | 4 | 工业 Pilot = 平台托举验证负载（Phase-2+） | **生效** |
 | 5 | 世界模型资料仅本地 Junction，永不 Submodule | **生效** |
 | 6 | 立即修订 INFRA-02 / TECH-02 / TECH-04 | **已执行** |
+| 7 | ws-02 双模式：CTRL-SIM 用 ROS2（DOMAIN 43）；BATCH 可不启 | **生效（v0.3）** |
 
 正式会签纪要可另附；未会签前工程按本基线执行，冲突以 CR 升级本文为准。
 
@@ -241,8 +255,9 @@
 | 版本 | 日期 | 说明 |
 |------|------|------|
 | v0.1-draft | 2026-08-03 | 首稿 |
-| **v0.2** | 2026-08-03 | **升为工作基线**；挂钩 INFRA-02 M 序列；§5/§8 改执行状态 |
+| v0.2 | 2026-08-03 | 升为工作基线；挂钩 INFRA-02 M 序列 |
+| **v0.3** | 2026-08-03 | **ws-02 双模式**；CTRL-SIM=ROS2 DOMAIN 43；对齐 INFRA-02 v1.3 |
 
 ---
 
-*PLAN-FUSION-01 v0.2 · working-baseline · 2026-08-03*
+*PLAN-FUSION-01 v0.3 · working-baseline · 2026-08-03*

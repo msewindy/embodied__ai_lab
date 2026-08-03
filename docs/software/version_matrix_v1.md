@@ -1,11 +1,11 @@
-# 软件版本矩阵 v1.2
+# 软件版本矩阵 v1.3
 
 | 属性 | 内容 |
 |------|------|
 | **文档编号** | TECH-04 |
-| **版本** | v1.2 |
+| **版本** | v1.3 |
 | **维护人** | R2 |
-| **依据** | [PLAN-FUSION-01](../plan/platform_wm_fusion_plan_v0.md) · INFRA-01/02 · 世界模型 FR3 §1.0 钉扎（本地挂载） |
+| **依据** | [PLAN-FUSION-01](../plan/platform_wm_fusion_plan_v0.md) · INFRA-02 v1.3 · 世界模型 FR3 §1.0 钉扎（本地挂载） |
 
 ---
 
@@ -126,12 +126,22 @@ graph TD
 
 ## 五、Phase-1 节点角色与版本落点
 
-| 节点 | 必装 | 不装 / 禁止 |
-|------|------|-------------|
-| **lab-ws-02** | Ubuntu 24.04 · Driver · Isaac Sim 6 · Isaac Lab 3 线 · PyTorch · lab_platform | **ROS2 域内节点**；勿日常 export `ROS_DOMAIN_ID` |
-| **lab-ws-01** | Ubuntu 24.04 · ROS2 Jazzy · Cyclone · lab_platform · ros2 工作区 | 不强制装完整 Isaac（可只作消费端） |
-| **FR3 真机工控** | Phase-2：`libfranka` / `franka_ros2` · Jazzy | Phase-1 以 Isaac 为主 |
-| **Go2 onboard** | 回归用；非 Phase-1 主路径 | 真机动态实验受安全门禁约束 |
+| 节点 | 必装 | 模式 / 域 |
+|------|------|-----------|
+| **lab-ws-02** | Ubuntu 24.04 · Driver · Isaac Sim 6 · Isaac Lab 3 线 · PyTorch · lab_platform · **ROS2 Jazzy（已装可用）** | **CTRL-SIM**：`ROS_DOMAIN_ID=43` + Cyclone；**BATCH**：可不启 ROS |
+| **lab-ws-01** | Ubuntu 24.04 · ROS2 Jazzy · Cyclone · lab_platform · ros2 工作区 | **真机域 `ROS_DOMAIN_ID=42`** |
+| **FR3 真机工控** | Phase-2：`libfranka` / `franka_ros2` · Jazzy | DOMAIN 42 |
+| **Go2 onboard** | 回归用 | DOMAIN 42；动态真机受安全门禁 |
+
+### 5.1 ROS Domain 钉扎（强制）
+
+| 域 ID | 用途 | 成员 |
+|------|------|------|
+| **42** | 真机 Real 栈 | ws-01 ↔ 机器人 onboard |
+| **43** | CTRL-SIM 控制仿真 | **仅 lab-ws-02**（Isaac + franka_sim_bridge + Mid 等） |
+
+**禁止**：在 ws-02 CTRL-SIM 会话使用 42；禁止两域桥接。  
+Isaac↔ROS2 桥组件版本（官方或自研）须记入 run manifest / `m2_env_pin.md`。
 
 ---
 
@@ -149,4 +159,5 @@ graph TD
 |------|------|------|
 | v1.0-draft | 2026-06 | 首版；24.04/Jazzy 基线 |
 | v1.1 | 2026-07-09 | 维护人/审批人 R1/R2 |
-| **v1.2** | 2026-08-03 | 对齐 PLAN-FUSION-01 / FR3；Isaac·PyTorch 钉扎加严；主任务改桌面抓放；增 §五节点落点 |
+| v1.2 | 2026-08-03 | 对齐 PLAN-FUSION / FR3；Isaac 钉扎；主任务桌面抓放 |
+| **v1.3** | 2026-08-03 | **双模式**；DOMAIN **42/43**；ws-02 CTRL-SIM 允许 ROS2 |

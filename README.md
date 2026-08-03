@@ -44,9 +44,9 @@
 - **预算：** 框架 CAPEX 报批 **¥10 万**（[PLAN-BUDGET-02](docs/plan/budget_v2_framework.md)）
 - **团队：** 标准编制 4 人（R1–R4），Batch-1 招聘 R2+R3
 - **环境：** lab-ws-01 / lab-ws-02 环境安装完成（E0）
-- **Phase-1 主路径：** **FR3 + Isaac 融合闭环**（[INFRA-02 v1.2](docs/infra/phase1_validation_plan_v1.md) M0–M6）；Go2 降为回归
-- **融合基线：** [PLAN-FUSION-01 v0.2](docs/plan/platform_wm_fusion_plan_v0.md)
-- **下一步：** ws-02 **E1** smoke → **M2** FR3 Hello  
+- **Phase-1 主路径：** **FR3 CTRL-SIM**（Isaac + ROS2 · DOMAIN **43**）（[INFRA-02 v1.3](docs/infra/phase1_validation_plan_v1.md) M0–M6）；Go2 降为回归
+- **融合基线：** [PLAN-FUSION-01 v0.3](docs/plan/platform_wm_fusion_plan_v0.md) · ws-02 **双模式**
+- **下一步：** ws-02 **M2** FR3 Hello（ROS2 同构）  
 - **物理：** 围栏/急停待采购施工；布局待实测
 
 ---

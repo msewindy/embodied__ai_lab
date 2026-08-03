@@ -1,14 +1,14 @@
-# 统一 ROS2 消息接口规范 v1.2
+# 统一 ROS2 消息接口规范 v1.3
 
 | 属性 | 内容 |
 |------|------|
 | **文档编号** | TECH-02 |
-| **版本** | v1.2 |
+| **版本** | v1.3 |
 | **维护人** | R2 |
-| **依据** | [PLAN-FUSION-01](../plan/platform_wm_fusion_plan_v0.md) · [governance_index_v1.md](../org/governance_index_v1.md) · [TECH-09](../architecture/platform_technical_architecture_v1.md) · [TECH-12](../data/policy_registry_spec.md) · [version_matrix_v1.md](./version_matrix_v1.md) |
-| **适用范围** | **Pipeline B/C**（Real 运行时）；Pipeline A（Isaac）**语义对齐但不跑 ROS2**（见 §3.3.1） |
+| **依据** | [PLAN-FUSION-01](../plan/platform_wm_fusion_plan_v0.md) · [INFRA-02](../infra/phase1_validation_plan_v1.md) · [TECH-09](../architecture/platform_technical_architecture_v1.md) · [version_matrix_v1.md](./version_matrix_v1.md) |
+| **适用范围** | **真机 Real（DOMAIN 42）** + **CTRL-SIM（DOMAIN 43，lab-ws-02）**；BATCH 训练可不启 ROS2 |
 | **主锚点设备** | `franka-01`（FR3）；`quadruped-01` 仍用既有 SkillIntent/cmd_vel |
-| **实现包** | `embodied_lab_msgs`（自定义 msg/srv）· `embodied_lab_bringup`（launch） |
+| **实现包** | `embodied_lab_msgs` · `embodied_lab_bringup` · `franka_sim_bridge`（CTRL-SIM） |
 
 ---
 
@@ -16,18 +16,21 @@
 
 ### 1.1 部署与 DDS 域
 
-| 节点 | 是否进 ROS2 域 | 运行组件 |
-|------|:-------------:|----------|
-| **lab-ws-02** | **否** | Isaac、训练、IndexService、`lab isaac` CLI |
-| **lab-ws-01** | **是** | RunManager、Rosbag、F5/F6B/F6S、Teleop |
-| **机器人 onboard** | **是** | F6C、Limiter、Driver Bridge |
+| 节点 | 模式 | DOMAIN | 运行组件 |
+|------|------|:------:|----------|
+| **lab-ws-02** | **CTRL-SIM** | **43** | Isaac + `franka_sim_bridge` + Mid/Low +（可选）本机 RunManager |
+| **lab-ws-02** | **BATCH** | — | Isaac 训练/评估；**可不启** ROS2 |
+| **lab-ws-01** | Real 大脑 | **42** | RunManager、Rosbag、F5/F6B/F6S、Teleop |
+| **机器人 onboard** | Real 小脑 | **42** | F6C、Limiter、Driver Bridge |
 
 ```text
-ROS_DOMAIN_ID = 42          # 全实验室 Real 域统一
-RMW_IMPLEMENTATION = rmw_cyclonedds_cpp   # 见 version_matrix §三
+ROS_DOMAIN_ID = 42          # 真机 Real 域：ws-01 ↔ 本体
+ROS_DOMAIN_ID = 43          # CTRL-SIM：仅 lab-ws-02
+RMW_IMPLEMENTATION = rmw_cyclonedds_cpp
 ```
 
-**禁止**：ws-02 启动任何 ROS2 节点；ws-01 **不得**跨网直接调用厂商 SDK（必须经 onboard Driver Bridge）。
+**禁止**：CTRL-SIM 使用 42；两域桥接；ws-01 **不得**跨网直接调厂商 SDK（必须经 onboard Driver Bridge）。  
+**CTRL-SIM 与 Real 使用同一套 msg/Topic 命名**（见 §3.3）；仅 `backend` 与 DOMAIN 不同。
 
 ### 1.2 控制环分层（§七）
 
@@ -179,7 +182,7 @@ string frame_id                # 默认 fr3_link0 / 臂基座
 
 #### 3.3.1 TaskSpaceCommand / LowStateFeedback（语义契约 · 仿真与真机同构）
 
-Pipeline A（Isaac，ws-02）**不发布 ROS2 Topic**，但 Agent Runtime 与日后 Real Bridge **必须使用同一语义**。数值/ε/Scene 以 `external/world_model/docs/FR3*.md` 为 SSOT。
+**CTRL-SIM（DOMAIN 43）与 Real（DOMAIN 42）均通过 ROS2 Topic 交换本契约**（INFRA-02 v1.3）。BATCH 训练可不走 Topic。数值/ε/Scene 以 `external/world_model/docs/FR3*.md` 为 SSOT。
 
 ```text
 TaskSpaceCommand  (Mid → Low)
@@ -424,8 +427,9 @@ graph LR
 | v1.0-draft | — | 早期 draft，未对齐 TECH-09 Run 模型 |
 | v1.0 | 2026-06-11 | 按 TECH-09 §七 重写：慢/快环、run_context、Pipeline B/C only |
 | v1.1 | 2026-06-11 | RunContext 增 task_id/eval_protocol_id/scene_id；operator→operator_id；首设备 Go2 |
-| **v1.2** | 2026-08-03 | **FR3 主锚点**；SkillIntent 增 ee_delta/gripper/control_mode；§3.3.1 TaskSpace 语义；对齐 PLAN-FUSION-01 |
+| v1.2 | 2026-08-03 | FR3 主锚点；SkillIntent 增 ee_delta/gripper；TaskSpace 语义 |
+| **v1.3** | 2026-08-03 | **CTRL-SIM DOMAIN 43**；废止「ws-02 不跑 ROS2」；与 INFRA-02 v1.3 对齐 |
 
 ---
 
-*TECH-02 v1.2 | ros2_interface · PLAN-FUSION-01 + TECH-09*
+*TECH-02 v1.3 | ros2_interface · PLAN-FUSION-01 + TECH-09*

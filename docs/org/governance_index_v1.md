@@ -36,7 +36,7 @@
 | PLAN-BUDGET-02 | **框架预算 v2（工业导向）** | `docs/plan/budget_v2_framework.md` | **R1-approved · 待上级批** |
 | PLAN-BUDGET-02-1P | 预算报批一页纸 | `docs/plan/budget_approval_onepager_v1.md` | R1-approved · 待上级批 |
 | PLAN-BUDGET-01 | ~~预算草案 v1~~ | `docs/plan/budget_draft_v1.md` | **superseded** → 见 v2 |
-| PLAN-FUSION-01 | **平台 × 世界模型控制运行时融合规划** | `docs/plan/platform_wm_fusion_plan_v0.md` | **v0.2 working-baseline** |
+| PLAN-FUSION-01 | **平台 × 世界模型控制运行时融合规划** | `docs/plan/platform_wm_fusion_plan_v0.md` | **v0.3 working-baseline** · 双模式 ROS2 |
 | — | 世界模型资料（本地 Junction，不进 Git） | `external/world_model/` ← 见 `external/README.md` | 本机挂载 · **禁止 Submodule** |
 
 ---
@@ -60,21 +60,21 @@
 | 编号 | 规范 | 路径 | 状态 |
 |------|------|------|------|
 | TECH-01 | 系统整体架构设计 | `docs/architecture/blueprint_v0.md` | **v1.1 R1-approved** |
-| TECH-02 | 统一消息接口 (ROS2) | `docs/software/ros2_interface_v1.md` | **v1.2** · FR3 TaskSpace · 对齐融合基线 |
+| TECH-02 | 统一消息接口 (ROS2) | `docs/software/ros2_interface_v1.md` | **v1.3** · DOMAIN 42/43 · CTRL-SIM |
 | TECH-03 | 算力与网络规划 | `docs/infra/infra_plan_draft_v0.md` | R1-approved |
-| TECH-04 | 软件版本矩阵 | `docs/software/version_matrix_v1.md` | **v1.2** · Isaac/FR3 钉扎 |
+| TECH-04 | 软件版本矩阵 | `docs/software/version_matrix_v1.md` | **v1.3** · 双模式 · DOMAIN 钉扎 |
 | TECH-05 | run_id 规范 | `docs/data/run_id_spec.md` | v1.1 |
 | TECH-06 | 平台软件架构（功能拓扑） | `docs/architecture/platform_architecture_v1.md` | v1.1 |
 | TECH-07 | 设备清单与外设调研 | `docs/device/embodied_hardware_survey_v1.md` | **v1.1 R1-approved** · Pilot 池选型 |
 | TECH-08 | 平台详细设计（功能） | `docs/architecture/platform_detailed_design_v1.md` | **v1.1** |
-| TECH-09 | 平台详细技术架构 | `docs/architecture/platform_technical_architecture_v1.md` | **v1.1** |
+| TECH-09 | 平台详细技术架构 | `docs/architecture/platform_technical_architecture_v1.md` | **v1.2** · ws-02 双模式 |
 | TECH-10 | PreFlight 门禁 | `docs/software/preflight_checklist_spec.md` | v1.1 |
 | TECH-11 | 设备能力矩阵 | `docs/device/device_capability_matrix_v1.md` | v1.1 |
 | TECH-12 | Policy 注册规范 | `docs/data/policy_registry_spec.md` | v1.1 |
 | TECH-13 | Isaac Job 适配器 | `docs/software/isaac_job_adapter_v1.md` | v1.1 |
 | TECH-14 | 平台 As-Built | `docs/architecture/platform_architecture_as_built_v1.md` | **v1.1** · 评审待签字 |
 | INFRA-01 | 环境安装清单 | `docs/infra/env_setup_checklist_v1.md` | v1.1 |
-| INFRA-02 | Phase 1 验证方案 | `docs/infra/phase1_validation_plan_v1.md` | **v1.2** · 主路径 FR3 融合（M0–M6） |
+| INFRA-02 | Phase 1 验证方案 | `docs/infra/phase1_validation_plan_v1.md` | **v1.3** · CTRL-SIM + M2–M6 详设 |
 | LAYOUT-01 | 场地布局草案 | `docs/layout/layout_draft_v0.md` | draft · **待实测 v1** |
 | LAYOUT-02 | **弱电与配电连接设计** | `docs/layout/electrical_design_v1.md` | **v1.0-draft** · 支撑 BOM §2.1/§2.2 |
 

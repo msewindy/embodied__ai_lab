@@ -4,7 +4,7 @@
 | 属性       | 内容                                                                                                         |
 | -------- | ---------------------------------------------------------------------------------------------------------- |
 | **文档编号** | TECH-09                                                                                                    |
-| **版本**   | v1.1                                                                                              |
+| **版本**   | v1.2                                                                                              |
 | **维护人**  | R2                                                                                                         |
 | **评审**   | 2026-06-10 · R1/R2/R3 短评审通过（见 `docs/meeting/tech09_review_v1.md`）                                          |
 | **依据** | [governance_index_v1.md](../org/governance_index_v1.md) · [plan_review_w1.md](../meeting/plan_review_w1.md) · [平台软件架构详细设计（功能架构）](./platform_detailed_design_v1.md) |
@@ -41,25 +41,29 @@ R2  ros2_interface_v1 / run_id_spec / policy_registry_spec
 
 ### 2.1 部署与进程视图（大脑-小脑分层）
 
-**架构原则**：
+**架构原则**（2026-08-03 修订 · 对齐 PLAN-FUSION-01 v0.3 / INFRA-02 v1.3）：
 
-- **lab-ws-02**：离线计算节点，**不加入实验室 ROS2 域**。仅运行 Isaac Sim/Lab、策略训练、数据集与 checkpoint 管理。
-- **lab-ws-01**：**大脑（慢控制）**，运行 ROS2 Jazzy，负责感知融合、规划、高层策略推理、实验管理与 rosbag 录制；通过 ROS2 与机器人本体通信。
-- **机器人本体 onboard**：**小脑（快控制）**，运行 ROS2 节点，负责低层策略/WBC、高频控制环、驱动桥（Driver Bridge）与本体传感器发布。
+- **lab-ws-02**：**双模式**  
+  - **CTRL-SIM（控制栈仿真）**：允许/推荐 ROS2 Jazzy，**`ROS_DOMAIN_ID=43`**，与真机控制图同构（FR3 Phase-1 主路径）。  
+  - **BATCH（离线批处理）**：Isaac 训练/大数据作业，**可不启 ROS2**；产出仍走文件 + 索引。  
+  - **禁止**与真机共用 DOMAIN **42**。  
+- **lab-ws-01**：**大脑（慢控制）**，ROS2 Jazzy，**DOMAIN=42**；感知/规划/高层策略/RunManager/rosbag；与真机通信。  
+- **机器人本体 onboard**：**小脑（快控制）**，DOMAIN=42；Driver Bridge / 限幅 / 快环。
 
 ```mermaid
 graph TB
-    subgraph WS02 ["lab-ws-02 · 离线：仿真 / 训练 / 数据（无 ROS2）"]
+    subgraph WS02 ["lab-ws-02 · 双模式"]
         F1[TaskRegistry]
-        F2[SimLauncher · Isaac Lab]
-        F3[Trainer · PyTorch]
+        F2[SimLauncher · Isaac]
+        F3[Trainer · BATCH 可无 ROS]
         F4[SimEvaluator]
-        F7D[数据集 / checkpoint 存储]
+        F7D[数据集 / checkpoint]
         F7I[IndexService]
+        CS[CTRL-SIM · ROS2 DOMAIN 43<br>FR3 bridge / Mid / Low]
         NAS[(NAS)]
     end
 
-    subgraph WS01 ["lab-ws-01 · 大脑：ROS2 慢控制域"]
+    subgraph WS01 ["lab-ws-01 · 大脑：ROS2 DOMAIN 42"]
         F5[TeleopAdapter]
         F6B[Perception / Plan<br>高层 PolicyRunner]
         F6S[Safety 协调节点]
@@ -67,31 +71,32 @@ graph TB
         F7Rec[Rosbag Recorder]
     end
 
-    subgraph Robot ["机器人本体 · 小脑：ROS2 快控制域"]
-        F6C[低层策略 / WBC<br>快环 Policy 节点]
-        LIM[Limiter / 本地安全]
+    subgraph Robot ["机器人本体 · 小脑：ROS2 DOMAIN 42"]
+        F6C[低层策略 / WBC]
+        LIM[Limiter]
         DB[Driver Bridge]
-        HW[厂商 SDK → 电机/传感器]
+        HW[厂商 SDK]
     end
 
     F2 --> F3
     F3 --> F7D
     F3 --> F7I
     F7D --> NAS
+    F2 --- CS
 
-    WS02 -.->|checkpoint / policy_manifest<br>文件同步| WS01
+    WS02 -.->|checkpoint 文件同步| WS01
 
     F7R --> F7Rec
     F5 --> F6B
-    F6B <-->|ROS2 慢环 10~50Hz| F6C
+    F6B <-->|慢环 10~50Hz| F6C
     F6C --> LIM --> DB --> HW
     HW --> DB --> F6C
-    F6C --> F6B
     F6S --> F6C
     F6S --> F6B
-    F7Rec -.->|实验结束后归档| F7D
+    F7Rec -.->|归档| F7D
 
-    WS01 <-->|ROS2 DOMAIN_ID=42| Robot
+    WS01 <-->|DOMAIN_ID=42| Robot
+    CS -.->|同构 msg · 禁止混域| F6B
 ```
 
 
@@ -103,32 +108,36 @@ graph TB
 | --------- | ----------- | ----------- | ------------------------------------------------ | ------------------------------------------------ |
 | **大脑（慢）** | lab-ws-01   | 10–50 Hz    | 任务理解、路径/轨迹规划、VLM/高层策略推理、Teleop 意图解析、全局 Safety 协调 | Perception, Plan, PolicyRunner(high), RunManager |
 | **小脑（快）** | 机器人 onboard | 100–500+ Hz | 步态/WBC、关节 PD、力矩闭环、底层策略执行、驱动 SDK 封装               | PolicyRunner(low), Limiter, Driver Bridge        |
-| **离线**    | lab-ws-02   | —           | 仿真、训练、评估、数据索引                                    | SimLauncher, Trainer, SimEvaluator               |
+| **离线 BATCH** | lab-ws-02 | — | 训练、大数据评估、索引（可不启 ROS2） | Trainer, SimEvaluator, Index |
+| **CTRL-SIM** | lab-ws-02 | 与真机同构（仿真频率） | FR3 等控制栈仿真验证 | Isaac + ROS2 bridge + Mid/Low |
 
 
 **合理性说明**：
 
-1. **ws-02 无 ROS2**：训练/仿真与真机控制解耦，避免 DDS 域污染与 GPU 资源争抢；checkpoint 经**文件同步**部署到 ws-01/机器人。
-2. **大脑在 ws-01**：算力足够承担感知与规划；与机器人间走局域网 ROS2，延迟可接受（慢环）。
-3. **小脑在 onboard**：控制环必须贴近驱动与 IMU/关节反馈，满足 Locomotion 等高实时需求；Driver Bridge **必须在本体**，禁止远程跨网直接调 SDK。
+1. **ws-02 双模式**：BATCH 保持与真机域解耦（防 DDS 污染、保训练吞吐）；CTRL-SIM 用独立 DOMAIN **43** 跑与真机同构的 ROS2 控制图，减少 Sim2Real 翻译层。  
+2. **大脑在 ws-01（真机）/ 可在 ws-02（CTRL-SIM）**：真机期算力与安全协调在 ws-01；仿真期为同构可把慢环放在 ws-02。  
+3. **小脑贴近执行器**：真机必须在本体；仿真期由 `franka_sim_bridge` + Isaac 承担等价 Low。  
+4. checkpoint 仍经**文件同步**；真机 DOMAIN **42** 与仿真 **43** **永不混用**。
 
 ### 2.3 交互方式分类
 
 
 | 交互类型                   | 适用场景                                      | 典型模块                             | 设计约束                                           |
 | ---------------------- | ----------------------------------------- | -------------------------------- | ---------------------------------------------- |
-| **ROS2 Topic/Service** | ws-01 ↔ 机器人本体 慢/快控制、感知回传                  | F5, F6B, F6C, F6S, Driver Bridge | 同一 `ROS_DOMAIN_ID=42`；由 `ros2_interface_v1` 定义 |
-| **文件系统 + 目录契约**        | ws-02 训练 artifact；checkpoint 部署；rosbag 归档 | F2, F3, F7D                      | ws-02 **不经 ROS2** 交换数据                         |
-| **索引服务（轻量 DB）**        | 跨 Run 检索、Sim↔Real 关联                      | F7I, PolicyRegistry              | 部署在 ws-02                                      |
-| **配置注册表（Git 管理）**      | 任务定义、环境参数                                 | F1                               | YAML/JSON in monorepo                          |
-| **CLI / 批处理作业**        | 训练启动、数据迁移、评估                              | F3, F4                           | 必须绑定 `experiment_id`                           |
+| **ROS2 Topic/Service（真机）** | ws-01 ↔ 本体 | F5, F6B, F6C, F6S, Driver Bridge | **`ROS_DOMAIN_ID=42`** |
+| **ROS2 Topic/Service（CTRL-SIM）** | ws-02 上 Isaac↔Mid/Low | franka_sim_bridge, Mid, run_context | **`ROS_DOMAIN_ID=43`**；msg 与真机同构 |
+| **文件系统 + 目录契约** | BATCH artifact；checkpoint；归档 | F2, F3, F7D | 跨机交换仍走文件，不经 ROS2 传权重 |
+| **索引服务（轻量 DB）** | 跨 Run 检索、Sim↔Real 关联 | F7I, PolicyRegistry | 部署在 ws-02 |
+| **配置注册表（Git 管理）** | 任务定义、环境参数 | F1 | YAML/JSON in monorepo |
+| **CLI / 批处理作业** | 训练启动、数据迁移、评估 | F3, F4 | 必须绑定 `experiment_id` / `run_id` |
 
 
 **原则**：
 
-- **ws-02 全程无 ROS2**；Sim/Train/Eval 产出均为文件 + 索引。
-- **Real 运行时 ROS2 域仅包含 ws-01 与 机器人 onboard**。
-- Sim 与 Real 通过 **相同语义接口**（Plan/Skill 抽象）+ **PolicyRegistry** 对齐，而非共用同一进程拓扑。
+- **BATCH**：可不启 ROS2；产出 = 文件 + 索引。  
+- **CTRL-SIM**：ws-02 **使用 ROS2**，DOMAIN **43**，与真机 **同一套 SkillIntent / LowState 语义**。  
+- **Real**：DOMAIN **42** = ws-01 + 本体；**禁止**与 43 混用。  
+- Sim↔Real 对齐靠 **同构 msg + PolicyRegistry**，不是共用 DOMAIN。
 
 ---
 
@@ -914,8 +923,9 @@ data/
 | 版本 | 日期 | 说明 |
 |------|------|------|
 | v1.0-approved | 2026-06-10 | 短评审通过 |
-| **v1.1** | 2026-07-09 | 角色口径 R1–R3；实施路线「阶段一/二」命名；对齐 W1 冻结决策 |
+| v1.1 | 2026-07-09 | 角色口径 R1–R3；对齐 W1 |
+| **v1.2** | 2026-08-03 | **ws-02 双模式**；CTRL-SIM DOMAIN 43；废止「全程无 ROS2」 |
 
 ---
 
-*TECH-09 | platform_technical_architecture_v1*
+*TECH-09 v1.2 | platform_technical_architecture_v1*
