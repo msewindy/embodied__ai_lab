@@ -1,14 +1,14 @@
-# Phase 1 验证测试方案 v1.3
+# Phase 1 验证测试方案 v1.4
 
 
 | 属性        | 内容                                                                                                                                                                                                                                                                      |
 | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **文档编号**  | INFRA-02                                                                                                                                                                                                                                                                |
-| **版本**    | v1.3                                                                                                                                                                                                                                                                    |
+| **版本**    | v1.4                                                                                                                                                                                                                                                                    |
 | **维护人**   | R2                                                                                                                                                                                                                                                                      |
 | **依据**    | [PLAN-FUSION-01](../plan/platform_wm_fusion_plan_v0.md) · [TECH-09](../architecture/platform_technical_architecture_v1.md) · [TECH-02](../software/ros2_interface_v1.md) · [TECH-04](../software/version_matrix_v1.md) · [TECH-13](../software/isaac_job_adapter_v1.md) |
 | **主锚点设备** | `franka-01`（**Franka Research 3 + Hand**）                                                                                                                                                                                                                               |
-| **主场景**   | `tabletop_pickplace_v0`（Isaac 控制仿真；M2 允许极简桌面）                                                                                                                                                                                                                           |
+| **主场景**   | M2：**官方 FR3 USD**（禁止自研场景）；M4+：`tabletop_pickplace_v0` / Scene v0                                                                                                                                                                                                        |
 | **回归设备**  | `quadruped-01`（Go2）— **不计入 Phase-1 主交付**                                                                                                                                                                                                                                |
 | **用途**    | Phase 1：Walking Skeleton → **FR3 控制仿真同构闭环**（ROS2 + Isaac）                                                                                                                                                                                                               |
 
@@ -21,7 +21,17 @@
 
 
 
-### 0.1 v1.2 → v1.3（本版）
+### 0.1 v1.3 → v1.4（本版）
+
+
+| 项 | v1.3 | v1.4 |
+| -- | ---- | ---- |
+| M2 场景 | 「极简桌面 / 官方 demo 不强制」 | **强制官方 FR3（+ Hand）USD**；自研场景 / Scene v0 推迟到 M4+ |
+| M2 启动 SOP | Isaac 启动仅注释占位 | **可复制步骤**：启 Sim、开官方 USD、启 ROS2 bridge、再跑控制图 |
+| M2 代码门禁 | 隐含「先写再跑」 | **显式前置**：msg / bridge / launch / hello 未建或未冒烟 → **不计 M2 通过** |
+
+
+### 0.2 v1.2 → v1.3（仍有效）
 
 
 | 项          | v1.2           | v1.3                                          |
@@ -34,7 +44,7 @@
 
 
 
-### 0.2 v1.1 → v1.2（仍有效）
+### 0.3 v1.1 → v1.2（仍有效）
 
 主锚点 Go2→FR3；E 序列引入 M0–M6；Go2 真机后置。世界模型 SSOT：`external/world_model/docs/FR3*.md`。
 
@@ -54,10 +64,10 @@
 | **E0** | 代码仓库 + 网络 + 环境安装                              | ws-01/02 | —      | ✅   | 2026-08（环境） |
 | **M0** | `external/world_model` 挂载 + 版本钉扎表可填           | ws-02    | F1-0   | ✅   | 2026-08-03  |
 | **E1** | Skeleton 全流程冒烟                                | ws-02    | （编排基线） | ✅   | 2026-08-03  |
-| **M2** | Isaac+ROS2 FR3 Hello：Δpose + LowStateFeedback | ws-02    | F1-2   | ⬜   |             |
-| **M3** | RunManager 归档一次 FR3 控制仿真 `run`                | ws-02    | F1-1   | ⬜   |             |
-| **M4** | 录 1 条可回放（日志轨或 LeRobot）                        | ws-02    | F1-3   | ⬜   |             |
-| **M5** | Mid 最小：Template MidGoal + stub/Oracle         | ws-02    | F1-4   | ⬜   |             |
+| **M2** | Isaac+ROS2 FR3 Hello：Δpose + LowStateFeedback | ws-02    | F1-2   | ✅   | 2026-08-04  |
+| **M3** | RunManager 归档一次 FR3 控制仿真 `run`                | ws-02    | F1-1   | ✅   | 2026-08-04  |
+| **M4** | 录 1 条可回放（日志轨或 LeRobot）                        | ws-02    | F1-3   | ✅   | 2026-08-05  |
+| **M5** | Mid 最小：Template MidGoal + stub/Oracle         | ws-02    | F1-4   | ✅   | 2026-08-05  |
 | **M6** | PreFlight/SOP：成员按清单独立开跑                       | ws-02    | F1-5   | ⬜   |             |
 
 
@@ -112,8 +122,8 @@ lab-ws-02 · ROS_DOMAIN_ID=43
 │   Low / franka_sim_bridge                                    │
 │        │ 内部：限幅 · HOLD · IK/阻抗                            │
 │        ▼                                                     │
-│   Isaac Sim/Lab + ROS2 Bridge（官方或自研适配）                 │
-│        FR3 + Hand + 桌面（M2 极简 / M4+ Scene v0）             │
+│   Isaac Sim/Lab + ROS2 Bridge（官方优先，失败再自研适配）         │
+│        M2：官方 FR3(+Hand) USD · M4+：Scene v0 桌面杯碗         │
 │        │                                                     │
 │        ▼ /perception/franka_01/low_state 等                  │
 └─────────────────────────────────────────────────────────────┘
@@ -130,7 +140,7 @@ lab-ws-02 · ROS_DOMAIN_ID=43
 2. **禁止** 在 BATCH 作业脚本里默认 `source` 进 43 域后误连真机网段设备。
 3. 仿真与真机 **msg 字段名、device_id、skill_mode 对齐**（TECH-02）；允许实现类不同。
 4. Mid 五模块 **不得** 写入 `RunManager` / `protocols.py` 核心。
-5. 官方 Isaac 场景/资产可用；**验收场景规格**以实验室 Scene / 本文为准。
+5. **M2 必须加载官方 FR3（+ Hand）USD**；禁止用未验证的自研 USD 冒充 M2 通过。实验室 Scene v0（杯碗/相机）自 **M4+** 起作为验收场景规格。
 
 
 
@@ -144,7 +154,8 @@ lab-ws-02 · ROS_DOMAIN_ID=43
 | `embodied_lab_bringup` FR3 launch | `ros2/`                            | ✓      | ✓        |
 | `m2_franka_hello` / Mid 脚本        | `lab_platform/scripts` 或 `ros2` 节点 | ✓      | → Mid 节点 |
 | RunManager + isaac/ctrl-sim 入口    | `lab_platform/`                    | —      | ✓        |
-| Isaac 场景 USD / Lab 任务             | `tasks/tabletop_pickplace_v0/`（待建） | 极简     | Scene v0 |
+| Isaac 场景 USD                      | **官方 Nucleus FR3**（见 §6.2）         | **强制** | —        |
+| 实验室 Scene / Lab 任务                | `tasks/tabletop_pickplace_v0/`（待建） | **不做** | Scene v0 |
 
 
 ---
@@ -171,11 +182,11 @@ lab-ws-02 · ROS_DOMAIN_ID=43
 ### 3.2 `ros2/`
 
 
-| 包                                | 状态                            |
-| -------------------------------- | ----------------------------- |
-| `embodied_lab_msgs`              | 真实；需按 TECH-02 v1.2/v1.3 扩展并重编 |
-| `go2_*`                          | 回归保留                          |
-| `franka_sim_bridge` + FR3 launch | **待建（M2 关键）**                 |
+| 包                                | 状态                                      |
+| -------------------------------- | --------------------------------------- |
+| `embodied_lab_msgs`              | 真实；已按 TECH-02 扩展 `ee_delta` / `LowStateFeedback` |
+| `go2_*`                          | 回归保留                                    |
+| `franka_sim_bridge` + FR3 launch | **代码已建**；ws-02 Isaac 联调验收仍开            |
 
 
 
@@ -241,52 +252,82 @@ E1 **不要求** ROS2。CTRL-SIM 从 M2 开始。
 
 
 
+### 6.0 实现状态与前置门禁（必读）
+
+截至 2026-08-04：M2 **代码已合入**，且 **lab-ws-02 联调通过**（见 `lab_platform/scripts/m2_env_pin.md`）：
+
+
+| 交付物 | 仓库现状 | 说明 |
+| --- | --- | --- |
+| `SkillIntent` 扩展（`ee_delta` / `gripper` / `expire_ms` 等） | **已合入代码** | 须 `colcon build` 后 `ros2 interface show` 复核 |
+| `LowStateFeedback.msg` | **已合入代码** | TECH-02 字段 |
+| `franka_sim_bridge` | **已合入代码** | 适配 Isaac **官方** `/joint_states`·`/joint_command`（非自研物理） |
+| `franka_ctrl_sim.launch.py` | **已合入代码** | `embodied_lab_bringup` |
+| `m2_franka_hello.py` / `m2_env_pin.md` | **已合入 + pin 已填** | `lab_platform/scripts/`；Hello 两次 PASS field check |
+| 既有 `go2_*` 包 | 已有 | **只证明 Go2 路径**；**不**算 M2 已测 |
+| Isaac + FR3 联调 | **ws-02 已测通过** | 桥方案 A；HOLD 后约 2–5 cm track 残留已记入 pin |
+
+**门禁（任一未满足则 §6.8 不计通过）**：
+
+1. `colcon build --packages-up-to franka_sim_bridge embodied_lab_bringup` 成功，且 `source install/setup.bash` 后 `ros2 interface show` 可见扩展后的 `SkillIntent` 与 `LowStateFeedback`（或约定临时等价 msg）。
+2. `ros2 launch embodied_lab_bringup franka_ctrl_sim.launch.py --show-args` 可解析。
+3. `python3 lab_platform/scripts/m2_franka_hello.py --help` 可运行（依赖与 INFRA-01 相同：系统 ROS Python / venv 混用策略）。
+4. Isaac 侧已按 §6.7 加载 **官方 FR3 USD**，桥方案 A 或 B 已选定并写入 `m2_env_pin.md`。
+
 ### 6.1 目标
 
 在 **lab-ws-02 · DOMAIN 43** 上，用与真机一致的 ROS2 控制语义：
 
-1. 加载 FR3 + Hand（官方资产）+ 极简桌面（可无杯碗）
+1. 加载 **Isaac 官方 FR3 + Hand USD**（禁止自研场景冒充通过）
 2. 发布相对 Δpose，末端移动约 **5 cm**
 3. 订阅并打印 `LowStateFeedback` 最小字段
 4. 无新令时 **HOLD**（保持最后指令或刹停，可配置）
 
-**不强制**当日接 RunManager（→ M3）。
+**不强制**当日接 RunManager（→ M3）。M2 **只验控制契约**，不验杯碗/相机/采数。
 
-### 6.2 场景策略
-
-
-| 项               | M2 规定                            |
-| --------------- | -------------------------------- |
-| 机器人资产           | Isaac **官方 FR3 + Hand** USD/URDF |
-| 场景              | **极简**：固定基座 + 平面桌即可              |
-| 是否用官方完整 demo 场景 | **不强制**；可借官方 launch/桥组件，验收以本文为准  |
-| Scene v0 杯碗相机   | **M4+** 再对齐 `FR3_Scene_v0`       |
+### 6.2 场景策略（强制官方资产）
 
 
+| 项 | M2 规定 |
+| --- | --- |
+| 机器人 USD | **强制** Nucleus / Content Browser 官方路径（见下）；**禁止**仓库内未验证自研 USD |
+| 夹爪 | 优先带 **Franka Hand** 的官方变体；若本机仅有裸臂 `fr3.usd`，须在 `m2_env_pin.md` 注明，且 `gripper_width` 可填占位但字段仍要出 |
+| 场景内容 | **官方机器人资产即可**（地面 / 默认灯光随官方资产）；**不要求**桌面、杯碗、相机 |
+| 自研 `tabletop_pickplace_v0` | **M2 禁止作为通过依据**；M4+ 再对齐 `FR3_Scene_v0` |
+| 官方 MoveIt / Panda 示例 | 可用作 **ROS2 bridge 操作参考**；若示例是 Panda，**不得**把 Panda 当作 FR3 验收资产——资产必须换成官方 FR3 |
 
+**钉死资产路径（Isaac Sim 6 Content Browser）**：
+
+```text
+Isaac Sim > Robots > FrankaRobotics > FrankaFR3 > fr3.usd
+# 文档相对路径：FrankaRobotics/FrankaFR3/fr3.usd
+# 运行时常见绝对形态（以本机 Nucleus / assets root 为准，写入 pin）：
+#   <assets_root>/Isaac/Robots/FrankaRobotics/FrankaFR3/fr3.usd
+```
+
+带 Hand 的官方变体若存在于同目录或官方 catalog，**优先选用**，并把完整路径记入 `m2_env_pin.md` 的 `isaac_usd_path` / `isaac_asset_rev`。
+
+参考：[Isaac Sim 6 Robot Assets](https://docs.isaacsim.omniverse.nvidia.com/6.0.0/assets/usd_assets_robots.html) · ROS2 Joint 教程（桥接操作，资产示例或为 Panda）[ROS2 Joint Control](https://docs.isaacsim.omniverse.nvidia.com/6.0.0/ros2_tutorials/tutorial_ros2_manipulation.html)。
 
 ### 6.3 软件架构
 
 ```text
-终端 A：Isaac Sim/Lab（带 ROS2 bridge 或 isaac 侧 ros 节点）
+终端 A：Isaac Sim 6（已开官方 FR3 USD + isaacsim.ros2.bridge）
 终端 B：ros2 launch ... franka_ctrl_sim.launch.py
-         - franka_sim_bridge
+         - franka_sim_bridge   # 选项 B 必起；选项 A 时作 TECH-02 适配层
          - （可选）safety stub
 终端 C：python m2_franka_hello.py
-         - 发布 1～N 次 TaskSpaceCommand
+         - 发布 1～N 次 task_space SkillIntent
          - 打印 low_state
 ```
 
 
-| 层级     | M2 实现                | Topic（device 段 `franka_01`）             |
-| ------ | -------------------- | --------------------------------------- |
-| Mid 替代 | `m2_franka_hello` 脚本 | pub `/skill/franka_01/intent`           |
-| Low    | `franka_sim_bridge`  | sub intent；pub low_state / joint_states |
-| 物理     | Isaac + bridge       | 内部 API；**不**对 Mid 暴露                    |
-| 安全     | 软件限幅 + expire HOLD   | 可先无完整 F6S                               |
-
-
-
+| 层级 | M2 实现 | Topic（device 段 `franka_01`） |
+| --- | --- | --- |
+| Mid 替代 | `m2_franka_hello` 脚本 | pub `/skill/franka_01/intent` |
+| Low | `franka_sim_bridge` | sub intent；pub `/perception/franka_01/low_state`（及内部 joint 适配） |
+| 物理 | Isaac + 官方 ROS2 bridge（或 Lab API） | **不**对 Mid 暴露 |
+| 安全 | 软件限幅 + expire HOLD | 可先无完整 F6S |
 
 ### 6.4 消息契约（验收用最小集）
 
@@ -297,11 +338,11 @@ ee_delta[6] = {dx,dy,dz,droll,dpitch,dyaw}   # 基座系相对；M2 测 dx=+0.05
 gripper ∈ [0,1]
 control_mode = POSE(1) 或 IMPEDANCE(2)
 expire_ms = 150–200
-frame_id = "fr3_link0"   # 或与资产一致的基座 frame
+frame_id = "fr3_link0"   # 或与官方资产一致的基座 frame（须写入 pin）
 device_id = "franka-01"
 ```
 
-**上行**（可用临时自定义 msg / JSON over String，但字段名冻结；优先 `LowStateFeedback.msg`）：
+**上行**（优先正式 `LowStateFeedback.msg`；临时 JSON/`String` 仅排障，字段名仍冻结）：
 
 ```text
 ee_pose_actual, ee_pose_desired
@@ -314,87 +355,164 @@ safety_event, backend="isaac_sim", latency_ms
 
 ### 6.5 Isaac ↔ ROS2 桥（实现选项）
 
-按可用性**自上而下选一**，选定后写入钉扎表：
+按可用性**自上而下选一**，选定后写入 `m2_env_pin.md`：
 
 
-| 选项                               | 说明                                           | 适用     |
-| -------------------------------- | -------------------------------------------- | ------ |
-| **A. 官方 Isaac ROS / 场景 ROS2 组件** | 与 Isaac 6 + Jazzy 组合匹配时优先                    | 少自研    |
-| **B. 自研** `franka_sim_bridge`    | 进程内调 Isaac Lab API，两端用 rclpy 出 TECH-02 Topic | 官方桥难装时 |
-| **C. 旁路（不计入 M2 通过）**             | 纯 API 无 ROS2                                 | 仅排障    |
+| 选项 | 说明 | 适用 |
+| --- | --- | --- |
+| **A. 官方** `isaacsim.ros2.bridge` + OmniGraph（JointStates 等） | Isaac 内启用 ROS2 bridge；用官方节点出/入 joint（或等价）；**本仓库** `franka_sim_bridge` 将官方 topic **适配**为 TECH-02 `SkillIntent` / `LowStateFeedback` | **优先**；少自研物理侧 |
+| **B. 自研** `franka_sim_bridge`（Lab/Sim API） | 进程内调 Isaac Lab / Sim API，rclpy 直接出 TECH-02 Topic；仍须加载 **同一官方 FR3 USD** | 官方桥与 Jazzy/Cyclone 不兼容或难装时 |
+| **C. 旁路（不计入 M2 通过）** | 纯 API、无 ROS2 | 仅排障 |
 
-
-**M2 正式通过必须走 A 或 B（ROS2 主路径）。**
+**M2 正式通过必须走 A 或 B。** 推荐顺序：先 A 打通官方 `/joint_states` 冒烟 → 再挂适配层出 TECH-02 → 再跑 hello。
 
 ### 6.6 推荐仓库落点
 
 ```text
-ros2/src/
-  embodied_lab_msgs/          # 扩展 SkillIntent / LowStateFeedback
-  franka_sim_bridge/          # Low + Isaac 适配
+ros2/                              # 本仓库当前为扁平包布局（非 src/）
+  embodied_lab_msgs/               # 扩展 SkillIntent；新增 LowStateFeedback
+  franka_sim_bridge/               # Low：intent→Isaac；反馈→low_state（待建）
   embodied_lab_bringup/
     launch/franka_ctrl_sim.launch.py
 lab_platform/scripts/
-  m2_franka_hello.py          # 发 Δpose + 打印反馈
-  m2_env_pin.md               # 手填版本钉扎
-docs/ 或 data/notes/
+  m2_franka_hello.py               # 发 Δpose + 打印反馈（待建）
+  m2_env_pin.md                    # 手填版本 / USD / 桥方案钉扎（待建）
 ```
-
-
 
 ### 6.7 执行步骤（ws-02）
 
+以下路径以仓库根 `~/project/embodied__ai_lab`、Isaac Lab `~/IsaacLab` 为例；本机不一致时以 `m2_env_pin.md` 为准。
+
+#### 6.7.1 终端公共环境（每个 CTRL-SIM 终端）
+
 ```bash
-# 0) 域与环境
 export ROS_DOMAIN_ID=43
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+# 若 Isaac 官方桥要求 FastDDS profile，按本机 pin 设置；默认实验室用 Cyclone
 source /opt/ros/jazzy/setup.bash
+```
 
-# 1) 编译消息与 bridge（首次）
+#### 6.7.2 代码编译与接口冒烟（门禁）
+
+```bash
 cd ~/project/embodied__ai_lab/ros2
 colcon build --symlink-install --packages-up-to franka_sim_bridge embodied_lab_bringup
 source install/setup.bash
 
-# 2) 启动 Isaac（按本机安装方式；示例）
-# 官方桥：按钉扎文档启动带 ROS2 的 FR3 场景
-# 自研桥：先起 Isaac/Lab，再起 bridge 节点
-
-# 3) 启动控制图
-ros2 launch embodied_lab_bringup franka_ctrl_sim.launch.py \
-  device_id:=franka-01 backend:=isaac_sim
-
-# 4) Hello
-cd ~/project/embodied__ai_lab/lab_platform
-source .venv/bin/activate
-# 保证能 import rclpy / embodied_lab_msgs（与 INFRA-01 相同注意事项）
-python scripts/m2_franka_hello.py --dx 0.05 --domain 43
+ros2 interface show embodied_lab_msgs/msg/SkillIntent | grep -E 'ee_delta|gripper|expire'
+ros2 interface show embodied_lab_msgs/msg/LowStateFeedback
+ros2 launch embodied_lab_bringup franka_ctrl_sim.launch.py --show-args
 ```
 
+#### 6.7.3 终端 A — 启动 Isaac Sim 并加载官方 FR3
 
+**方式 1（GUI · 推荐首次）**
+
+```bash
+# 按本机安装方式启动 Isaac Sim 6（示例：Isaac Lab 捆绑）
+cd ~/IsaacLab
+./isaaclab.sh -s
+# 或直接调用本机 isaac-sim.sh / omni_python 入口（写入 pin）
+```
+
+在 GUI 中：
+
+1. **Window → Extensions**：启用 `isaacsim.ros2.bridge`（及依赖）。
+2. Content Browser 打开官方资产：  
+   `Isaac Sim > Robots > FrankaRobotics > FrankaFR3 > fr3.usd`  
+   （带 Hand 变体优先；完整路径记入 pin。）
+3. 确认 Stage 中 Articulation Root（常见为 `/fr3` 或资产默认 prim；**以 Stage 为准写入 pin** 的 `articulation_prim`）。
+4. **Tools → Robotics → ROS 2 OmniGraphs → JointStates**（或按官方 Joint Control 教程搭 Publish/Subscribe Joint State + Articulation Controller），`targetPrim` / `robotPath` 指向上述 FR3 prim。
+5. 按 **Play**。另开 ROS 终端验证官方桥：
+
+```bash
+# 与 Isaac 同一 DOMAIN=43
+ros2 topic list | grep -E 'joint_states|joint_command'
+ros2 topic echo /joint_states --once
+```
+
+**方式 2（命令行打开 USD · 路径以 pin 为准）**
+
+```bash
+# 示例：用 Isaac 入口直接打开官方 USD（具体可执行文件名因安装而异）
+ISAAC_USD="<assets_root>/Isaac/Robots/FrankaRobotics/FrankaFR3/fr3.usd"
+# ./isaac-sim.sh --/app/file/open="$ISAAC_USD"
+# 打开后仍须启用 ros2.bridge + JointStates 图 + Play（同方式 1 步骤 1–5）
+```
+
+**选项 B 差异**：GUI 仍加载 **同一官方 FR3 USD** 并 Play；可不搭官方 JointStates 图，改由 `franka_sim_bridge` 经 Lab/Sim API 驱动。仍须能在 DOMAIN 43 上看到 TECH-02 topic。
+
+#### 6.7.4 终端 B — 启动实验室控制图
+
+```bash
+source /opt/ros/jazzy/setup.bash
+export ROS_DOMAIN_ID=43
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+cd ~/project/embodied__ai_lab/ros2 && source install/setup.bash
+
+ros2 launch embodied_lab_bringup franka_ctrl_sim.launch.py \
+  device_id:=franka-01 backend:=isaac_sim
+```
+
+期望：`ros2 topic list` 可见 `/skill/franka_01/intent` 与 `/perception/franka_01/low_state`（或 launch 参数声明的等价名）。
+
+#### 6.7.5 终端 C — Hello Δpose
+
+```bash
+cd ~/project/embodied__ai_lab/lab_platform
+# 保证能 import rclpy / embodied_lab_msgs（与 INFRA-01 相同注意事项）
+source /opt/ros/jazzy/setup.bash
+export ROS_DOMAIN_ID=43
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+# 若使用 venv：按 INFRA-01 策略激活，且勿遮蔽系统 site-packages 中的 rclpy
+python3 scripts/m2_franka_hello.py --dx 0.05 --domain 43
+```
+
+#### 6.7.6 钉扎 `m2_env_pin.md`（验收必填）
+
+至少记录：
+
+```text
+date:
+host: lab-ws-02
+isaac_sim: 6.0.x
+isaac_lab: <tag/commit>
+driver: <nvidia-smi>
+ros: jazzy + rmw_cyclonedds_cpp
+ROS_DOMAIN_ID: 43
+bridge_option: A | B
+isaac_usd_path: <完整路径或 Content Browser 路径>
+isaac_asset_rev: <若可知>
+articulation_prim: /fr3   # 以 Stage 实测为准
+frame_id_base: fr3_link0
+notes: Hand 是否加载；官方 JointStates 是否使用
+```
 
 ### 6.8 验收标准（M2）
 
 
-| #   | 标准                                                                                           |
-| --- | -------------------------------------------------------------------------------------------- |
-| 1   | `ROS_DOMAIN_ID=43`；`ros2 topic list` 可见 intent / low_state（或约定名）                             |
-| 2   | 末端沿基座 x（或文档声明轴）移动约 **5 cm**，可重复                                                              |
-| 3   | 打印字段齐：`ee_pose_*`、`q[7]`、`gripper_width`、`tracking_error`、`safety_event`、`backend=isaac_sim` |
-| 4   | 停止发布后进入 HOLD（无持续漂移）                                                                          |
-| 5   | `m2_env_pin.md`（或等价）记录 Isaac Sim/Lab、桥方案 A/B、驱动、日期                                           |
-
-
+| # | 标准 |
+| --- | --- |
+| 0 | §6.0 门禁全部满足；**所用 USD 为官方 FR3（非自研 Scene）** |
+| 1 | `ROS_DOMAIN_ID=43`；`ros2 topic list` 可见 intent / low_state（或约定名） |
+| 2 | 末端沿基座 x（或 pin 声明轴）移动约 **5 cm**，可重复 |
+| 3 | 打印字段齐：`ee_pose_*`、`q[7]`、`gripper_width`、`tracking_error`、`safety_event`、`backend=isaac_sim` |
+| 4 | 停止发布后进入 HOLD（无持续漂移） |
+| 5 | `m2_env_pin.md` 已填：Sim/Lab 版本、桥方案 A/B、**官方 USD 路径**、`articulation_prim`、驱动、日期 |
 
 
 ### 6.9 失败排查
 
 
-| 现象              | 处理                                    |
-| --------------- | ------------------------------------- |
-| 无 topic         | 域是否 43；是否 source install；Isaac 桥是否起   |
-| 臂不动             | bridge 日志；限幅；IK 失败；单位 m/rad           |
-| DDS 奇怪设备        | 是否误用 42；防火墙/多网卡 Cyclone 配置            |
+| 现象 | 处理 |
+| --- | --- |
+| 无 topic | 域是否 43；是否 source install；Isaac 是否 Play；`isaacsim.ros2.bridge` 是否启用 |
+| Content 无 FR3 | Nucleus / assets 未同步；核对 Isaac 6 Robot Assets 文档路径；禁止临时改用未声明的 Panda 充数 |
+| 臂不动 | bridge / OmniGraph 日志；`articulation_prim` 是否匹配；限幅；IK 失败；单位 m/rad |
+| 官方桥有 joint、无 TECH-02 | 适配层 `franka_sim_bridge` 未起或 topic 重映射错误 |
+| DDS 奇怪设备 | 是否误用 42；防火墙/多网卡 Cyclone 配置 |
 | rclpy 与 venv 冲突 | 参照 INFRA-01：系统 ROS Python 与 venv 混用策略 |
+| 仅 API 能动、无 ROS2 | 属选项 C，**不计 M2 通过** |
 
 
 ---
@@ -433,23 +551,33 @@ lab CLI / RunManager
 
 ### 7.3 实现要点
 
-1. **替换 StubIsaacLauncher**：不要假 sleep；改为调用 launch/脚本并等待退出码。
+1. **CTRL-SIM 不走 StubIsaacLauncher**：`CtrlSimLauncher` 检查 topic → 必要时自动 `franka_ctrl_sim.launch` → 跑 `m2_hello` → 写 manifest。
 2. **RunManager 仍不跑 Mid 逻辑**；只管生命周期。
-3. `/system/run_context` 在 DOMAIN 43 发布（与真机同 msg）。
-4. 产出目录：`data/runs/<run_type>/<run_id>/` + `manifest.json`。
+3. `/system/run_context` 在 DOMAIN 43 由 `RclpyRos2Bridge` 发布（TRANSIENT_LOCAL；`run_type=ctrl_sim`）。
+4. 产出目录：`~/embodied-ai-lab-data/runs/ctrl_sim/<run_id>/` + `manifest.json`。
+5. CLI：`lab ctrl-sim run`（`--no-launch` / `--keep-launch`）。
 
 
 
 ### 7.4 目标命令形态
 
 ```bash
+# 前置：Isaac 官方 FR3 Play + JointStates；终端 B 已 launch franka_ctrl_sim
 export ROS_DOMAIN_ID=43
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+source /opt/ros/jazzy/setup.bash
+source ~/project/embodied__ai_lab/ros2/install/setup.bash
+cd ~/project/embodied__ai_lab/lab_platform && source .venv/bin/activate
+
 lab --data-root ~/embodied-ai-lab-data ctrl-sim run \
   --device franka-01 \
-  --scene tabletop_pickplace_v0 \
+  --scene tabletop_pickplace_v0_min \
   --profile m2_hello
-# 或扩展既有：lab isaac run --kind ...（须标明 ctrl-sim / domain 43）
 ```
+
+首跑（2026-08-04）：`cs_20260804_145201_p2_franka-01` status=`completed`；manifest 含 `ros_domain_id=43` / `backend=isaac_sim` / Isaac 版本。  
+
+后续增强：`lab ctrl-sim run` 默认 **真 ROS** 发布 `/system/run_context`；若 TECH-02 topic 缺失且 `/joint_states` 已可见则 **自动** `franka_ctrl_sim.launch`（`--no-launch` / `--keep-launch` 可调）。
 
 
 
@@ -512,6 +640,23 @@ lab --data-root ~/embodied-ai-lab-data ctrl-sim run \
 
 
 
+**已实现（A 轨 · 2026-08-05）**
+
+```bash
+# 录制（挂在 M3 run 上）
+lab --data-root ~/embodied-ai-lab-data ctrl-sim run \
+  --device franka-01 --scene tabletop_pickplace_v0_min \
+  --profile m2_hello --record --keep-launch
+
+# 回放
+lab --data-root ~/embodied-ai-lab-data ctrl-sim replay \
+  --run-id <run_id> --device franka-01
+```
+
+产物：`runs/ctrl_sim/<run_id>/logs/low.jsonl` + `replay_metrics.json`；manifest.`tracks.A`。
+
+
+
 ### 8.4 验收标准（M4）
 
 1. 产物落在对应 `run_id` 下
@@ -558,6 +703,22 @@ MidGoal:
   target_ref: red_cup | bowl | home | none
   success_predicate: ...   # M5 可简化为超时或位移阈值
 ```
+
+
+
+**已实现（2026-08-05）**
+
+```bash
+lab --data-root ~/embodied-ai-lab-data ctrl-sim run \
+  --device franka-01 --scene tabletop_pickplace_v0_min \
+  --profile m5_template --keep-launch
+
+# 或独立脚本
+python3 lab_platform/scripts/m5_mid_template.py --domain 43
+```
+
+模板：`lab_platform/templates/m5_approach_retreat.yaml`（APPROACH → RETREAT）。  
+产物：`logs/m5_mid_template.log`、`logs/mid_steps.json`；manifest.`mid`。
 
 
 
@@ -612,11 +773,12 @@ R1 或交叉角色签字/纪要：「按 SOP 独立完成一次仿真实验」�
 
 | 序号  | 任务                               | 验收       |
 | --- | -------------------------------- | -------- |
-| 1   | msg 扩展 + `franka_sim_bridge` MVP | colcon 过 |
-| 2   | **M2** CTRL-SIM Hello            | §六.8     |
-| 3   | **M3** Run 归档                    | §七.5     |
-| 4   | **M4** 录回放                       | §八.4     |
-| 5   | **M5→M6**                        | §九 / §十  |
+| 1   | msg 扩展 + `franka_sim_bridge` MVP + launch/hello | ✅ §6.0 门禁 |
+| 2   | **M2** CTRL-SIM Hello（官方 FR3 USD）            | ✅ §六.8（2026-08-04） |
+| 3   | **M3** Run 归档（真 ROS run_context + 自动 launch） | ✅ §七.5 |
+| 4   | **M4** 录回放（A 轨 `--record` / `replay`） | ✅ §八.4 |
+| 5   | **M5** 薄 Mid（`m5_template`）     | ✅ §九.4 |
+| 6   | **M6** SOP                         | §十       |
 
 
 **不要做**：Go2 真机主攻；Mid 五模块进 RunManager；CTRL-SIM 用 DOMAIN 42。
@@ -666,9 +828,15 @@ R1 或交叉角色签字/纪要：「按 SOP 独立完成一次仿真实验」�
 | v1.0     | 2026-06-16 | 首版；E2/E3                                               |
 | v1.1     | 2026-07-09 | R1–R3 口径                                               |
 | v1.2     | 2026-08-03 | FR3 主路径；M0–M6                                          |
-| **v1.3** | 2026-08-03 | **ws-02 双模式**；CTRL-SIM=ROS2 DOMAIN 43；**M2–M6 详细技术方案** |
+| v1.3     | 2026-08-03 | **ws-02 双模式**；CTRL-SIM=ROS2 DOMAIN 43；**M2–M6 详细技术方案** |
+| **v1.4** | 2026-08-04 | **M2 SOP**：强制官方 FR3 USD；Isaac 启动步骤；代码门禁与未测状态写清 |
+| v1.4.1   | 2026-08-04 | **M2 联调通过**（ws-02）：`m2_env_pin.md` 钉扎；Hello PASS×2；进度表 M2→✅ |
+| v1.4.1   | 2026-08-04 | **M3 骨架首跑**：`lab ctrl-sim run` → `completed` + manifest/index；`run_context` 仍为 Stub ROS |
+| v1.4.2   | 2026-08-04 | **M3 收口**：真 ROS `/system/run_context`；缺 bridge 时自动 `franka_ctrl_sim.launch`；进度表 M3→✅ |
+| v1.4.3   | 2026-08-05 | **M4 A 轨通过**：`--record` 51 帧 + `replay`；manifest tracks.A；相对 Δpose 开环误差仅作旁证 |
+| v1.4.4   | 2026-08-05 | **M5 通过**：`m5_template` APPROACH→RETREAT 两步 success；`mid_steps.json`；task_space only |
 
 
 ---
 
-*INFRA-02 v1.3 | Phase 1 · FR3 控制仿真同构闭环*
+*INFRA-02 v1.4.1 | Phase 1 · FR3 控制仿真同构闭环*

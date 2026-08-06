@@ -15,6 +15,8 @@ class DefaultResourceScheduler(ResourceScheduler):
         locks: list[tuple[str, str]] = []
         if request.run_type == "isaac_job" and request.job_kind == "train":
             locks.append(("gpu_lock", "lab-ws-02:gpu0"))
+        if request.run_type == "ctrl_sim":
+            locks.append(("gpu_lock", "lab-ws-02:gpu0"))
         for device_id in request.device_ids:
             locks.append(("device_lock", device_id))
         return locks

@@ -1,14 +1,15 @@
 # embodied_lab ROS2 工作区
 
-Ubuntu 24.04 + ROS2 Jazzy 上构建与运行 Go2 首台设备栈。
+Ubuntu 24.04 + ROS2 Jazzy：Go2 栈 + FR3 CTRL-SIM（DOMAIN 43）适配。
 
 ## 包清单
 
 | 包 | 部署 | 说明 |
 |----|------|------|
-| `embodied_lab_msgs` | ws-01 + onboard | TECH-02 自定义 msg/srv |
+| `embodied_lab_msgs` | ws-01 + onboard + ws-02 | TECH-02 自定义 msg/srv（含 FR3 `ee_delta` / `LowStateFeedback`） |
 | `go2_driver_bridge` | **onboard** | 宇树 Go2 Driver Bridge 插件 |
-| `embodied_lab_bringup` | ws-01 | run_context、bringup 检查、launch |
+| `franka_sim_bridge` | **lab-ws-02** | FR3 CTRL-SIM Low：TECH-02 ↔ Isaac 官方 `/joint_states`·`/joint_command` |
+| `embodied_lab_bringup` | ws-01 / ws-02 | Go2 bringup + `franka_ctrl_sim.launch.py` |
 
 ## 快速构建
 
@@ -20,6 +21,26 @@ export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
 colcon build --symlink-install
 source install/setup.bash
+```
+
+## FR3 CTRL-SIM（M2 · DOMAIN 43）
+
+物理侧用 **Isaac 官方 FR3 USD + ros2.bridge JointStates**（见 `franka_sim_bridge/README.md`），不要自研场景。
+
+```bash
+export ROS_DOMAIN_ID=43
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+source /opt/ros/jazzy/setup.bash
+cd ros2 && colcon build --symlink-install --packages-up-to franka_sim_bridge embodied_lab_bringup
+source install/setup.bash
+
+# 终端 A：Isaac Sim 打开官方 fr3.usd，启用 JointStates，Play
+# 终端 B：
+ros2 launch embodied_lab_bringup franka_ctrl_sim.launch.py \
+  device_id:=franka-01 backend:=isaac_sim
+
+# 终端 C：
+python3 ../lab_platform/scripts/m2_franka_hello.py --dx 0.05 --domain 43
 ```
 
 ## Go2 real_bringup（仿真硬件，无真机）

@@ -79,7 +79,13 @@ class RealRuntime(Protocol):
 
 @runtime_checkable
 class Ros2Bridge(Protocol):
-    def publish_run_context(self, run_id: str, device_ids: list[str], policy_id: str | None) -> None: ...
+    def publish_run_context(
+        self,
+        run_id: str,
+        device_ids: list[str],
+        policy_id: str | None,
+        context: dict | None = None,
+    ) -> None: ...
     def clear_run_context(self) -> None: ...
 
 

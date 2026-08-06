@@ -19,6 +19,10 @@ def make_gap_job_id(operator: str) -> str:
     return f"gap_{_ts()}_{operator}"
 
 
+def make_ctrl_sim_id(operator: str, device_id: str) -> str:
+    return f"cs_{_ts()}_{operator}_{device_id}"
+
+
 def make_policy_id(task_slug: str) -> str:
     slug = task_slug.replace("-", "_")[:24]
     return f"pol_{_ts()}_{slug}"

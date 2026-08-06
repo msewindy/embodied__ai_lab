@@ -16,6 +16,7 @@ set(msg_files
   msg/NodeHealth.msg
   msg/RobotState.msg
   msg/SkillIntent.msg
+  msg/LowStateFeedback.msg
   msg/TeleopCommand.msg
   msg/JointCommand.msg
   msg/SafetyState.msg

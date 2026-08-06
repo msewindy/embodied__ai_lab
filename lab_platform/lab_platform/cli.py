@@ -12,6 +12,7 @@ from lab_platform.preflight.gate import DefaultPreFlightGate
 from lab_platform.pipelines.demo_full import run_full_demo
 from lab_platform.run_manager.manager import RunManager, RunRejectedError
 from lab_platform.scheduler.locks import DefaultResourceScheduler
+from lab_platform.ctrl_sim import CtrlSimLauncher
 from lab_platform.stubs import (
     StubGapAnalyzer,
     StubIsaacLauncher,
@@ -25,6 +26,11 @@ def build_run_manager(
     config: LabConfig,
     use_ros: bool = False,
     sim: bool = True,
+    *,
+    ctrl_auto_launch: bool = True,
+    ctrl_keep_launch: bool = False,
+    ctrl_record: bool = False,
+    ctrl_record_fps: float = 10.0,
 ) -> RunManager:
     index = IndexService(config)
     preflight = DefaultPreFlightGate(config, index)
@@ -39,9 +45,28 @@ def build_run_manager(
         real = StubRealRuntime(config, index)
     isaac = StubIsaacLauncher(config)
     gap = StubGapAnalyzer()
+    ctrl_sim = CtrlSimLauncher(config)
+    ctrl_sim.auto_launch = ctrl_auto_launch
+    ctrl_sim.keep_launch = ctrl_keep_launch
+    ctrl_sim.record = ctrl_record
+    ctrl_sim.record_fps = ctrl_record_fps
     return RunManager(
-        config, index, preflight, scheduler, real, ros2, isaac, gap
+        config, index, preflight, scheduler, real, ros2, isaac, gap, ctrl_sim
     )
+
+
+def _find_ctrl_sim_run_dir(config: LabConfig, run_id: str) -> Path | None:
+    direct = config.runs_dir / "ctrl_sim" / run_id
+    if direct.is_dir():
+        return direct
+    # fallback: index storage_path
+    index = IndexService(config)
+    rec = index.get_run(run_id)
+    if rec and rec.storage_path:
+        p = config.data_root / rec.storage_path
+        if p.is_dir():
+            return p
+    return None
 
 
 def cmd_init(args: argparse.Namespace) -> int:
@@ -158,6 +183,183 @@ def cmd_bridge(args: argparse.Namespace) -> int:
     config = LabConfig.from_env(Path(args.data_root))
     promote_bridge(config, args.device, args.level.upper())
     return 0
+
+
+def cmd_ctrl_sim_run(args: argparse.Namespace) -> int:
+    """M3：归档一次 CTRL-SIM run（真 ROS run_context + 自动 launch/附着）。"""
+    import os
+
+    os.environ["ROS_DOMAIN_ID"] = "43"
+    os.environ.setdefault("RMW_IMPLEMENTATION", "rmw_cyclonedds_cpp")
+
+    config = LabConfig.from_env(Path(args.data_root))
+    if not config.index_db.exists():
+        init_workspace(config)
+
+    from lab_platform.ctrl_sim.launcher import resolve_ros2_bin, ros2_missing_hint
+    from lab_platform.pipeline_c.ros2_runtime import ros2_available
+
+    if not ros2_available():
+        print(
+            "ERROR: rclpy/embodied_lab_msgs unavailable; source jazzy + ros2/install first",
+            file=sys.stderr,
+        )
+        return 2
+    if not resolve_ros2_bin():
+        print(f"ERROR: {ros2_missing_hint()}", file=sys.stderr)
+        return 2
+
+    rm = build_run_manager(
+        config,
+        use_ros=True,
+        ctrl_auto_launch=not args.no_launch,
+        ctrl_keep_launch=args.keep_launch,
+        ctrl_record=bool(args.record),
+        ctrl_record_fps=float(args.record_fps),
+    )
+    req = RunCreateRequest(
+        run_type="ctrl_sim",
+        operator=args.operator or config.operator,
+        project_id=config.project_id,
+        device_ids=[args.device],
+        scene_id=args.scene,
+        job_kind=args.profile,
+    )
+    try:
+        record = rm.execute(req)
+        meta = record.metadata.get("execution", {})
+        run_dir = config.data_root / record.storage_path
+        print(
+            json.dumps(
+                {
+                    "run_id": record.run_id,
+                    "status": record.status.value,
+                    "storage_path": record.storage_path,
+                    "manifest": str(run_dir / "manifest.json"),
+                    "ros_domain_id": meta.get("ros_domain_id", 43),
+                    "backend": meta.get("backend", "isaac_sim"),
+                    "isaac_sim_version": meta.get("isaac_sim_version"),
+                    "mode": meta.get("mode"),
+                    "launched_by_lab": meta.get("launched_by_lab"),
+                    "run_context_seen": meta.get("run_context_seen"),
+                    "recorded": meta.get("recorded"),
+                    "record_frames": meta.get("record_frames"),
+                    "low_jsonl": meta.get("low_jsonl"),
+                    "message": meta.get("message"),
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return 0 if record.status == RunStatus.COMPLETED else 1
+    except (RunRejectedError, ResourceConflictError) as e:
+        print(f"failed: {e}", file=sys.stderr)
+        return 1
+
+
+def cmd_ctrl_sim_replay(args: argparse.Namespace) -> int:
+    """M4：开环回放某 run 的 low.jsonl。"""
+    import os
+
+    os.environ["ROS_DOMAIN_ID"] = "43"
+    os.environ.setdefault("RMW_IMPLEMENTATION", "rmw_cyclonedds_cpp")
+
+    config = LabConfig.from_env(Path(args.data_root))
+    from lab_platform.ctrl_sim.launcher import resolve_ros2_bin, ros2_missing_hint
+    from lab_platform.ctrl_sim.replayer import TrajectoryReplayer
+    from lab_platform.pipeline_c.ros2_runtime import ros2_available
+
+    if not ros2_available():
+        print("ERROR: rclpy/embodied_lab_msgs unavailable", file=sys.stderr)
+        return 2
+    if not resolve_ros2_bin():
+        print(f"ERROR: {ros2_missing_hint()}", file=sys.stderr)
+        return 2
+
+    run_dir = _find_ctrl_sim_run_dir(config, args.run_id)
+    if run_dir is None:
+        print(f"ERROR: run not found: {args.run_id}", file=sys.stderr)
+        return 1
+    jsonl = run_dir / "logs" / "low.jsonl"
+    if not jsonl.is_file():
+        print(f"ERROR: missing {jsonl} (run with --record first)", file=sys.stderr)
+        return 1
+
+    # 可选：缺 bridge 时自动 launch（与 run 一致）
+    launcher = CtrlSimLauncher(config)
+    launcher.auto_launch = not args.no_launch
+    launcher.keep_launch = True
+    # 轻量就绪检查：复用 topic list 逻辑
+    from lab_platform.ctrl_sim.launcher import CTRL_SIM_DOMAIN, _topic_list
+
+    ns = args.device.replace("-", "_")
+    topics = _topic_list(CTRL_SIM_DOMAIN)
+    need_lab = [f"/skill/{ns}/intent", f"/perception/{ns}/low_state"]
+    if not all(t in topics for t in need_lab):
+        if args.no_launch:
+            print(
+                "ERROR: CTRL-SIM topics missing; start bridge or omit --no-launch",
+                file=sys.stderr,
+            )
+            return 1
+        logs = run_dir / "logs"
+        logs.mkdir(exist_ok=True)
+        ok_launch, detail = launcher._start_launch(
+            logs=logs,
+            device_id=args.device,
+            backend="isaac_sim",
+            domain=CTRL_SIM_DOMAIN,
+            wait_topics=need_lab,
+        )
+        if not ok_launch:
+            print(f"ERROR: auto launch failed: {detail}", file=sys.stderr)
+            return 1
+        print(f"[CtrlSim] replay auto-launched bringup: {detail}", flush=True)
+
+    replayer = TrajectoryReplayer(
+        jsonl_path=jsonl,
+        device_id=args.device,
+        domain=43,
+        rate=float(args.rate),
+        run_id=args.run_id,
+    )
+    metrics = replayer.run()
+    metrics_path = run_dir / "logs" / "replay_metrics.json"
+    metrics_path.write_text(json.dumps(metrics, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    manifest_path = run_dir / "manifest.json"
+    if manifest_path.is_file():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            manifest = {}
+        manifest.setdefault("replay", {})
+        manifest["replay"].update(
+            {
+                "metrics_path": "logs/replay_metrics.json",
+                "last_replay_at": __import__("datetime").datetime.now().isoformat(timespec="seconds"),
+                "mean_ee_error_m": metrics.get("mean_ee_error_m"),
+                "max_ee_error_m": metrics.get("max_ee_error_m"),
+                "num_played": metrics.get("num_played"),
+            }
+        )
+        manifest_path.write_text(
+            json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
+
+    print(
+        json.dumps(
+            {
+                "run_id": args.run_id,
+                "jsonl": str(jsonl),
+                "metrics": str(metrics_path),
+                **metrics,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+    return 0 if metrics.get("success") else 1
 
 
 def cmd_ops_bringup(args: argparse.Namespace) -> int:
@@ -316,6 +518,50 @@ def main(argv: list[str] | None = None) -> int:
     p_br.add_argument("--device", required=True)
     p_br.add_argument("--level", required=True, help="L0-L4")
     p_br.set_defaults(func=cmd_bridge)
+
+    p_cs = sub.add_parser("ctrl-sim", help="CTRL-SIM（DOMAIN 43）实验编排")
+    cs_sub = p_cs.add_subparsers(dest="ctrl_sim_cmd", required=True)
+    p_csr = cs_sub.add_parser(
+        "run",
+        help="归档一次 FR3 控制仿真 run（真 ROS run_context；缺 bridge 时自动 launch）",
+    )
+    p_csr.add_argument("--device", default="franka-01")
+    p_csr.add_argument("--scene", default="tabletop_pickplace_v0_min")
+    p_csr.add_argument(
+        "--profile",
+        default="m2_hello",
+        choices=["m2_hello", "m5_template"],
+        help="m2_hello=Δpose 冒烟；m5_template=薄 Mid APPROACH→RETREAT",
+    )
+    p_csr.add_argument(
+        "--no-launch",
+        action="store_true",
+        help="不自动 launch；仅附着已有 franka_ctrl_sim",
+    )
+    p_csr.add_argument(
+        "--keep-launch",
+        action="store_true",
+        help="若本次由 lab 拉起 bringup，结束后不杀掉",
+    )
+    p_csr.add_argument(
+        "--record",
+        action="store_true",
+        help="M4：同步录制 A 轨 logs/low.jsonl（intent+low_state @record-fps）",
+    )
+    p_csr.add_argument("--record-fps", type=float, default=10.0, help="A 轨落盘 Hz（默认 10）")
+    p_csr.add_argument("--operator")
+    p_csr.set_defaults(func=cmd_ctrl_sim_run)
+
+    p_csp = cs_sub.add_parser("replay", help="M4：开环回放某 run 的 low.jsonl")
+    p_csp.add_argument("--run-id", required=True)
+    p_csp.add_argument("--device", default="franka-01")
+    p_csp.add_argument("--rate", type=float, default=1.0, help="回放速率倍率")
+    p_csp.add_argument(
+        "--no-launch",
+        action="store_true",
+        help="不自动 launch；仅附着已有 franka_ctrl_sim",
+    )
+    p_csp.set_defaults(func=cmd_ctrl_sim_replay)
 
     p_ops = sub.add_parser("ops", help="LabOps 运维命令")
     ops_sub = p_ops.add_subparsers(dest="ops_cmd", required=True)

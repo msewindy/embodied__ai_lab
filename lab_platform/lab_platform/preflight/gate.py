@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+import os
 from pathlib import Path
 
 import yaml
@@ -21,6 +21,8 @@ class DefaultPreFlightGate(PreFlightGate):
         "real_eval": 3,
     }
 
+    CTRL_SIM_DOMAIN = 43
+
     def __init__(self, config: LabConfig, index: IndexClient) -> None:
         self._config = config
         self._index = index
@@ -32,6 +34,8 @@ class DefaultPreFlightGate(PreFlightGate):
         items.append(self._check_env())
         if rt == "isaac_job":
             items.extend(self._check_isaac(request))
+        elif rt == "ctrl_sim":
+            items.extend(self._check_ctrl_sim(request))
         elif rt in self.BRIDGE_MIN:
             items.extend(self._check_real(request, rt))
         elif rt == "sim2real_gap_job":
@@ -173,6 +177,49 @@ class DefaultPreFlightGate(PreFlightGate):
                 )
             else:
                 items.append(PreFlightItem("PF-12", "pass", f"{device_id} compatible"))
+        return items
+
+    def _check_ctrl_sim(self, request: RunCreateRequest) -> list[PreFlightItem]:
+        items: list[PreFlightItem] = []
+        domain_raw = os.environ.get("ROS_DOMAIN_ID", str(self.CTRL_SIM_DOMAIN))
+        try:
+            domain = int(domain_raw)
+        except ValueError:
+            domain = -1
+        if domain != self.CTRL_SIM_DOMAIN:
+            items.append(
+                PreFlightItem(
+                    "PF-CS-01",
+                    "fail",
+                    f"ROS_DOMAIN_ID={domain_raw} (CTRL-SIM requires {self.CTRL_SIM_DOMAIN})",
+                )
+            )
+        else:
+            items.append(
+                PreFlightItem("PF-CS-01", "pass", f"ROS_DOMAIN_ID={self.CTRL_SIM_DOMAIN}")
+            )
+
+        if not request.device_ids:
+            items.append(PreFlightItem("PF-02", "fail", "device_id required"))
+        else:
+            caps = self._load_yaml(self._config.registry_dir / "device_capabilities.yaml")
+            devices = caps.get("devices") or {}
+            for device_id in request.device_ids:
+                if device_id not in devices:
+                    items.append(PreFlightItem("PF-02", "fail", f"unknown device: {device_id}"))
+                else:
+                    items.append(PreFlightItem("PF-02", "pass", device_id))
+
+        profile = request.job_kind or "m2_hello"
+        if profile not in ("m2_hello", "m5_template"):
+            items.append(PreFlightItem("PF-CS-02", "fail", f"unsupported profile: {profile}"))
+        else:
+            items.append(PreFlightItem("PF-CS-02", "pass", profile))
+
+        if not request.scene_id:
+            items.append(PreFlightItem("PF-CS-03", "warn", "scene_id empty; will use min default"))
+        else:
+            items.append(PreFlightItem("PF-CS-03", "pass", request.scene_id))
         return items
 
     def _check_gap(self, request: RunCreateRequest) -> list[PreFlightItem]:

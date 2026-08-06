@@ -1,0 +1,20 @@
+# M5 薄 Mid：Template MidGoal 序列（stub 情境，无前向 WM）
+# 成功条件：位移阈值 或 超时（超时也算本步完成，便于空载验收）
+profile: m5_template
+situation: stub
+forward_wm: off
+goals:
+  - name: APPROACH
+    target_ref: stub_forward
+    ee_delta: [0.03, 0.0, 0.0, 0.0, 0.0, 0.0]
+    rate_hz: 10.0
+    max_duration_s: 2.0
+    success_ee_travel_m: 0.04
+    expire_ms: 200
+  - name: RETREAT
+    target_ref: none
+    ee_delta: [-0.03, 0.0, 0.0, 0.0, 0.0, 0.0]
+    rate_hz: 10.0
+    max_duration_s: 2.0
+    success_ee_travel_m: 0.04
+    expire_ms: 200

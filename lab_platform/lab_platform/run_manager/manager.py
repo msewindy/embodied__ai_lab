@@ -6,6 +6,7 @@ from pathlib import Path
 
 from lab_platform.config import LabConfig
 from lab_platform.ids import (
+    make_ctrl_sim_id,
     make_gap_job_id,
     make_isaac_job_id,
     make_real_run_id,
@@ -41,6 +42,7 @@ class RunManager:
 
     RUN_PREFIX = {
         "isaac_job": ("isaac_jobs", make_isaac_job_id),
+        "ctrl_sim": ("ctrl_sim", make_ctrl_sim_id),
         "real_collect": ("real_collect", lambda op, d: make_real_run_id("rc", op, d)),
         "real_deploy": ("real_deploy", lambda op, d: make_real_run_id("rd", op, d)),
         "real_eval": ("real_eval", lambda op, d: make_real_run_id("re", op, d)),
@@ -53,6 +55,7 @@ class RunManager:
 
     PIPELINE = {
         "isaac_job": Pipeline.A,
+        "ctrl_sim": Pipeline.A,
         "real_collect": Pipeline.B,
         "real_deploy": Pipeline.B,
         "real_eval": Pipeline.B,
@@ -70,6 +73,7 @@ class RunManager:
         ros2: Ros2Bridge,
         isaac_launcher: IsaacLauncher | None = None,
         gap_analyzer: GapAnalyzer | None = None,
+        ctrl_sim_launcher: object | None = None,
     ) -> None:
         self._config = config
         self._index = index
@@ -79,6 +83,7 @@ class RunManager:
         self._ros2 = ros2
         self._isaac = isaac_launcher
         self._gap = gap_analyzer
+        self._ctrl_sim = ctrl_sim_launcher
 
     def execute(self, request: RunCreateRequest) -> RunRecord:
         """create → start → finish 一步完成（骨架期）。"""
@@ -118,7 +123,11 @@ class RunManager:
             "scene_id": request.scene_id,
             "eval_protocol_id": request.eval_protocol_id,
             "policy_id": request.policy_id,
+            "profile": request.job_kind,
+            "backend": "isaac_sim" if request.run_type == "ctrl_sim" else None,
+            "ros_domain_id": 43 if request.run_type == "ctrl_sim" else None,
         }
+        metadata = {k: v for k, v in metadata.items() if v is not None}
         meta_path = run_dir / "metadata.json"
         meta_path.write_text(
             json.dumps(
@@ -161,7 +170,19 @@ class RunManager:
         if not run:
             raise KeyError(run_id)
         policy_id = run.metadata.get("policy_id")
-        self._ros2.publish_run_context(run_id, run.device_ids, policy_id)
+        self._ros2.publish_run_context(
+            run_id,
+            run.device_ids,
+            policy_id,
+            context={
+                "run_type": run.run_type,
+                "scene_id": run.metadata.get("scene_id"),
+                "operator_id": run.operator,
+                "experiment_plan_id": run.metadata.get("experiment_plan_id"),
+                "task_id": run.metadata.get("profile") or run.job_kind,
+                "eval_protocol_id": run.metadata.get("eval_protocol_id"),
+            },
+        )
         self._index.patch_run(run_id, status=RunStatus.RUNNING)
 
     def finish(
@@ -191,6 +212,8 @@ class RunManager:
 
         if rt == "isaac_job":
             return self._run_isaac(record, request, run_dir)
+        if rt == "ctrl_sim":
+            return self._run_ctrl_sim(record, request, run_dir)
         if rt == "real_bringup":
             return self._real.bringup(record.run_id, request.device_ids[0], run_dir)
         if rt == "calibration_session":
@@ -250,6 +273,23 @@ class RunManager:
             policy_id=request.policy_id,
         )
         return RunExecutionResult(True, "isaac stub completed", aids)
+
+    def _run_ctrl_sim(
+        self, record: RunRecord, request: RunCreateRequest, run_dir: Path
+    ) -> RunExecutionResult:
+        if not self._ctrl_sim:
+            raise RuntimeError("CtrlSimLauncher not configured")
+        device_id = request.device_ids[0] if request.device_ids else "franka-01"
+        # auto_launch / keep_launch 取 CtrlSimLauncher 实例默认（CLI 可预先设置）
+        return self._ctrl_sim.run(
+            run_id=record.run_id,
+            run_dir=run_dir,
+            device_id=device_id,
+            scene_id=request.scene_id or "tabletop_pickplace_v0_min",
+            profile=request.job_kind or "m2_hello",
+            backend="isaac_sim",
+            domain=43,
+        )
 
     def _allocate_id(self, request: RunCreateRequest) -> str:
         if request.run_type == "isaac_job":

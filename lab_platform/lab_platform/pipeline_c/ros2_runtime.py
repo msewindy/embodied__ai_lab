@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
+from typing import Any
 
-import yaml
-
-from lab_platform.artifacts.registry import ArtifactRegistry
 from lab_platform.config import LabConfig
 from lab_platform.models import RunExecutionResult
 from lab_platform.pipeline_c.bringup_runner import Go2BringupRunner
@@ -80,18 +77,18 @@ class HybridRealRuntime(RealRuntime):
 
 
 class RclpyRos2Bridge:
-    """真 ROS2 run_context 发布（Pipeline B/C start/finish）。"""
+    """真 ROS2 `/system/run_context` 发布（TRANSIENT_LOCAL latched）。"""
 
     def __init__(self) -> None:
         self._node = None
-        self._ctx = None
+        self._ctx: dict[str, Any] | None = None
 
     def _ensure_node(self):
         if self._node is not None:
             return
         import rclpy
         from rclpy.node import Node
-        from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
+        from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
         from embodied_lab_msgs.msg import RunContext
         from std_msgs.msg import Header
 
@@ -112,24 +109,55 @@ class RclpyRos2Bridge:
         node._RunContext = RunContext
         node._Header = Header
         self._node = node
+        # 给 discovery / latched 匹配一点时间
+        for _ in range(5):
+            rclpy.spin_once(node, timeout_sec=0.05)
+
+    def _spin(self, n: int = 5) -> None:
+        if self._node is None:
+            return
+        import rclpy
+
+        for _ in range(n):
+            rclpy.spin_once(self._node, timeout_sec=0.05)
 
     def publish_run_context(
-        self, run_id: str, device_ids: list[str], policy_id: str | None
+        self,
+        run_id: str,
+        device_ids: list[str],
+        policy_id: str | None,
+        context: dict[str, Any] | None = None,
     ) -> None:
+        ctx = dict(context or {})
+        ctx.update(
+            {
+                "run_id": run_id,
+                "device_ids": list(device_ids),
+                "policy_id": policy_id,
+            }
+        )
         if not ros2_available():
             from lab_platform.stubs.ros2_bridge import StubRos2Bridge
-            StubRos2Bridge().publish_run_context(run_id, device_ids, policy_id)
+
+            StubRos2Bridge().publish_run_context(run_id, device_ids, policy_id, context=ctx)
             return
+
         self._ensure_node()
-        self._ctx = {"run_id": run_id, "device_ids": device_ids, "policy_id": policy_id}
+        self._ctx = ctx
         msg = self._node._RunContext()
         msg.header = self._node._Header()
         msg.header.stamp = self._node.get_clock().now().to_msg()
         msg.run_id = run_id
-        msg.run_type = "real_bringup"
-        msg.device_ids = device_ids
+        msg.run_type = str(ctx.get("run_type") or "")
+        msg.device_ids = list(device_ids)
         msg.policy_id = policy_id or ""
+        msg.experiment_plan_id = str(ctx.get("experiment_plan_id") or "")
+        msg.operator_id = str(ctx.get("operator_id") or "")
+        msg.task_id = str(ctx.get("task_id") or "")
+        msg.eval_protocol_id = str(ctx.get("eval_protocol_id") or "")
+        msg.scene_id = str(ctx.get("scene_id") or "")
         self._node._pub.publish(msg)
+        self._spin(8)
         print(f"[RclpyROS2] run_context → {self._ctx}")
 
     def clear_run_context(self) -> None:
@@ -142,8 +170,11 @@ class RclpyRos2Bridge:
         msg.header = self._node._Header()
         msg.header.stamp = self._node.get_clock().now().to_msg()
         msg.run_id = ""
+        msg.run_type = ""
         msg.device_ids = []
+        msg.policy_id = ""
         self._node._pub.publish(msg)
+        self._spin(4)
         if self._ctx:
             print(f"[RclpyROS2] clear run_context (was {self._ctx['run_id']})")
         self._ctx = None

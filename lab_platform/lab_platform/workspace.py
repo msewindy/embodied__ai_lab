@@ -81,7 +81,7 @@ def _write_if_missing(path: Path, content: str) -> None:
 DEVICE_CAPABILITIES = """
 devices:
   franka-01:
-    model: franka_emika_panda
+    model: franka_fr3
     status: active
     zone: Z-DYN
     task_domains: [manipulation]
@@ -89,7 +89,7 @@ devices:
     onboard_compute: medium
     max_speed_cap: 0.5
     sensors: [joint_states, ee_pose, wrist_camera, force_torque]
-    driver_bridge_plugin: vendor/franka_panda/bridge_v1
+    driver_bridge_plugin: vendor/franka_fr3/bridge_v1
     power: wired
 
   quadruped-01:
