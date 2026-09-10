@@ -285,7 +285,7 @@ class RunManager:
             run_id=record.run_id,
             run_dir=run_dir,
             device_id=device_id,
-            scene_id=request.scene_id or "tabletop_pickplace_v0_min",
+            scene_id=request.scene_id or "tabletop_pickplace_v0",
             profile=request.job_kind or "m2_hello",
             backend="isaac_sim",
             domain=43,

@@ -22,8 +22,20 @@ def main() -> int:
     p.add_argument("--device-id", default="franka-01")
     p.add_argument("--domain", type=int, default=43)
     p.add_argument("--template", type=str, default="", help="YAML MidGoal 模板路径")
+    p.add_argument(
+        "--scene-yaml",
+        type=str,
+        default="",
+        help="Task Pack scene.yaml（toward / Oracle 必需）",
+    )
     p.add_argument("--run-id", default="")
     p.add_argument("--steps-log", type=str, default="", help="写出 mid_steps.json")
+    p.add_argument("--eval-log", type=str, default="", help="写出 eval.json（抓放）")
+    p.add_argument(
+        "--no-oracle-gt",
+        action="store_true",
+        help="不内嵌发布 GT；需外部 oracle 已在播",
+    )
     args = p.parse_args()
 
     try:
@@ -35,13 +47,18 @@ def main() -> int:
 
     tmpl = Path(args.template) if args.template else default_template_path()
     steps_log = Path(args.steps_log) if args.steps_log else None
+    eval_log = Path(args.eval_log) if args.eval_log else None
+    scene_yaml = Path(args.scene_yaml) if args.scene_yaml else None
     try:
         summary = run_mid_template(
             device_id=args.device_id,
             domain=args.domain,
             template_path=tmpl,
+            scene_yaml=scene_yaml,
             run_id=args.run_id,
             steps_log=steps_log,
+            eval_log=eval_log,
+            publish_oracle_gt=not args.no_oracle_gt,
         )
     except Exception as e:
         print(f"[m5] FAIL: {e}", file=sys.stderr)

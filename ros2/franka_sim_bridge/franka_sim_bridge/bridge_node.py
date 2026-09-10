@@ -163,8 +163,8 @@ class FrankaSimBridgeNode(Node):
             self._q = q
             self._dq = dq
             self._have_state = True
-            if self._holding:
-                self._q_hold = q.copy()
+            # 注意：HOLD 时禁止用实测 q 覆盖 _q_hold。
+            # 否则 Isaac 重力下落会把 joint_command「带走」，表现为臂慢慢倒下。
 
     def _on_intent(self, msg: SkillIntent) -> None:
         if msg.device_id and msg.device_id != self.device_id:

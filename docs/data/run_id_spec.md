@@ -1,11 +1,13 @@
-# 数据与实验记录规范 (Run & Artifact Spec) v1.0
+# 数据与实验记录规范 (Run & Artifact Spec) v1.2
 
 | 属性 | 内容 |
 |------|------|
 | **文档编号** | TECH-05 |
-| **版本** | v1.1 |
+| **版本** | v1.2 |
+| **日期** | 2026-08-07 |
 | **维护人** | R2 |
-| **依据** | TECH-09 v1.0-approved §五–§九 |
+| **依据** | TECH-09 · [PLAN-STRUCT-01](../plan/lab_strategy_runtime_structure_v0.md) · [TECH-12](./policy_registry_spec.md) |
+| **实现** | `lab_platform/ids.py` · `index/service.py` · `artifacts/hub.py` |
 
 ---
 
@@ -17,6 +19,7 @@ Run 是一次可审计的执行实例。ID **全局唯一**，写入 IndexServic
 
 | Run 类型 | ID 格式 | 示例 |
 |----------|---------|------|
+| **`ctrl_sim`**（主路径） | `cs_{YYYYMMDD}_{HHMMSS}_{operator}_{device_id}` | `cs_20260806_174016_p2_franka-01` |
 | `isaac_job` | `isaac_{YYYYMMDD}_{HHMMSS}_{operator}_{kind}` | `isaac_20260610_143000_p2_train` |
 | `real_collect` | `rc_{YYYYMMDD}_{HHMMSS}_{operator}_{device_id}` | `rc_20260610_150000_p1_franka-01` |
 | `real_deploy` | `rd_{YYYYMMDD}_{HHMMSS}_{operator}_{device_id}` | `rd_20260610_160000_p2_quadruped-01` |
@@ -34,20 +37,25 @@ Run 是一次可审计的执行实例。ID **全局唯一**，写入 IndexServic
 
 | Artifact | ID 格式 | 示例 |
 |----------|---------|------|
-| PolicyArtifact | `pol_{YYYYMMDD}_{task_slug}_{seq}` | `pol_20260610_velocity_go2_v1` |
+| **DatasetArtifact** | `ds_<source_run_id>`（`-`→`_`） | `ds_cs_20260806_174016_p2_franka_01` |
+| PolicyArtifact | `pol_{YYYYMMDD_HHMMSS}_{slug}` 或稳定别名 | `pol_state_p4_mvp` |
 | DemoArtifact | `demo_{YYYYMMDD}_{device_id}_{seq}` | `demo_20260610_franka-01_001` |
 | EvalArtifact | `eval_{YYYYMMDD}_{protocol_id}_{seq}` | `eval_20260610_loco_vel_v1_001` |
 | CalibrationArtifact | `calib_{device_id}_{type}_{YYYYMMDD}` | `calib_franka-01_handeye_20260610` |
 | SceneManifest | `scene_{layout_version}_{slug}` | `scene_v3_pickplace_bench` |
+
+Policy / Dataset 详情：[TECH-12](./policy_registry_spec.md)。
 
 ---
 
 ## 二、 根目录结构
 
 ```text
-data/
+<data-root>/                    # 例：~/embodied-ai-lab-data
 ├── index.db
-├── tasks/
+├── tasks/                      # 可选：工作区内镜像；仓库 tasks/ 为 Task Pack SSOT
+├── datasets/
+│   └── lerobot_v3/{run_id}/    # B 轨（LeRobot Dataset v3）
 ├── artifacts/
 │   ├── policies/{policy_id}/
 │   ├── demos/{demo_id}/
@@ -55,6 +63,7 @@ data/
 │   ├── calibrations/{calibration_id}/
 │   └── scenes/{scene_id}/
 ├── runs/
+│   ├── ctrl_sim/{run_id}/      # CTRL-SIM 主路径
 │   ├── isaac_jobs/{isaac_job_id}/
 │   ├── real_collect/{run_id}/
 │   ├── real_deploy/{run_id}/
@@ -116,6 +125,26 @@ data/
 
 ## 四、 各 Run 目录结构
 
+### 4.0 ctrl_sim（Phase-1 主路径）
+
+```text
+runs/ctrl_sim/{run_id}/
+├── manifest.json           # tracks.A / tracks.B / policy / eval / task_pack
+├── metadata.json
+├── logs/
+│   ├── low.jsonl           # A 轨（正式 run 默认录制）
+│   ├── eval.json           # m5_pickplace 等
+│   ├── mid_steps.json      # Mid profile
+│   └── policy_steps.json   # m5_policy_rollout
+└── native/                 # 可选旁路拷贝
+```
+
+| 产物 | 说明 |
+|------|------|
+| A 轨 | `logs/low.jsonl`；`lab ctrl-sim replay` |
+| B 轨 | 事后 `lab data export` → `datasets/lerobot_v3/{run_id}` + Index `ds_*` |
+| Policy | `lab policy train` → `artifacts/policies/{pol_*}`；rollout 写 `manifest.policy` |
+
 ### 4.1 isaac_job
 
 ```text
@@ -131,7 +160,7 @@ runs/isaac_jobs/{isaac_job_id}/
 | job_kind | 额外产物 | Artifact 注册 |
 |----------|----------|---------------|
 | play | 可选录屏 | 消费 PolicyArtifact |
-| train | native/checkpoints/ | **产出** PolicyArtifact |
+| train | native/checkpoints/ | **产出** PolicyArtifact（目标态） |
 | eval | native/metrics/ | **产出** EvalArtifact |
 
 ### 4.2 real_collect
@@ -184,13 +213,26 @@ runs/calibration_session/{run_id}/
 
 ### 5.1 PolicyArtifact
 
+**MVP（当前）：**
+
 ```text
 artifacts/policies/{policy_id}/
-├── policy_manifest.yaml    # 见 policy_registry_spec.md
-├── checkpoints/
-│   └── best.pt
-├── metrics_summary.json
-└── producer_run.json       # 指向 isaac_job_id
+├── policy_manifest.yaml
+├── policy.npz
+├── policy.meta.json
+├── train_meta.json
+└── hub_meta.json
+```
+
+**目标态（Isaac train）：** `checkpoints/best.pt` 等——见 [TECH-12 §五](./policy_registry_spec.md)。
+
+### 5.0 DatasetArtifact（B 轨）
+
+```text
+datasets/lerobot_v3/{run_id}/
+├── meta/lab_dataset.json   # dataset_id、source_run_ids
+├── meta/lab_source.json
+└── data/...
 ```
 
 ### 5.2 DemoArtifact
@@ -238,9 +280,9 @@ artifacts/scenes/{scene_id}/
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | id | TEXT PK | run_id |
-| run_type | TEXT | isaac_job / real_* / calibration_session |
-| pipeline | TEXT | A / B / C |
-| job_kind | TEXT | play/train/eval（仅 isaac） |
+| run_type | TEXT | **ctrl_sim** / isaac_job / real_* / calibration_session |
+| pipeline | TEXT | A / B / C / ctrl_sim |
+| job_kind | TEXT | play/train/eval（isaac）；profile 名（ctrl_sim） |
 | status | TEXT | pending/running/completed/failed/interrupted |
 | operator | TEXT | |
 | project_id | TEXT | |
@@ -253,7 +295,7 @@ artifacts/scenes/{scene_id}/
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | artifact_id | TEXT PK | |
-| artifact_type | TEXT | policy/demo/eval/calibration/scene |
+| artifact_type | TEXT | **dataset** / policy / demo / eval / calibration / scene |
 | lifecycle_status | TEXT | draft/candidate/production/deprecated/active |
 | producer_run_id | TEXT FK | |
 | storage_path | TEXT | |
@@ -281,19 +323,29 @@ artifacts/scenes/{scene_id}/
 ## 七、 CLI 约定
 
 ```bash
-# 创建 Run（内部：PreFlight → 分配 ID → 建目录 → 写 index）
-lab run create --type real_deploy --device quadruped-01 --policy pol_xxx --plan exp_xxx
+# CTRL-SIM（主路径）
+lab --data-root <root> ctrl-sim run --profile m5_pickplace --keep-launch
+lab --data-root <root> data export --run-id cs_… --format lerobot-v3
+lab --data-root <root> policy train --dataset ds_… --policy-id pol_…
+lab --data-root <root> list --artifacts
+lab --data-root <root> lineage cs_…
 
-# 结束 Run
-lab run finish --id rd_xxx --status completed
-
-# 查询
-lab run list --type real_deploy --device quadruped-01
-lab artifact show pol_xxx
+# 通用 / 骨架
+lab list [--artifacts] [--run-type ctrl_sim]
+lab run --type …   # Pipeline A/B/C（骨架期）
 ```
 
-Isaac 入口见 `isaac_job_adapter_v1.md`。
+操作细节：[SOP](../infra/sop_franka_ctrl_sim_v0.md)。Isaac 入口见 `isaac_job_adapter_v1.md`。
 
 ---
 
-*TECH-05 | run_id_spec v1.0 · 依据 TECH-09 approved*
+## 八、 变更记录
+
+| 版本 | 日期 | 说明 |
+|------|------|------|
+| v1.0 / v1.1 | 2026-06 / 07 | Walking Skeleton 契约 |
+| **v1.2** | **2026-08-07** | `ctrl_sim`、`datasets/`、`ds_*`；对齐 ArtifactHub |
+
+---
+
+*TECH-05 | run_id_spec v1.2*

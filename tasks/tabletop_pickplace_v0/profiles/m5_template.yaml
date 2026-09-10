@@ -1,0 +1,20 @@
+# 空载回归：相对 Δpose（与 lab_platform/templates/m5_approach_retreat.yaml 对齐）
+# 不依赖 ObjectPose；Scene 杯碗未就位时亦可跑。
+profile: m5_template
+situation: stub
+forward_wm: off
+goals:
+  - name: APPROACH
+    target_ref: stub_forward
+    ee_delta: [0.03, 0.0, 0.0, 0.0, 0.0, 0.0]
+    rate_hz: 10.0
+    max_duration_s: 2.0
+    success_ee_travel_m: 0.04
+    expire_ms: 200
+  - name: RETREAT
+    target_ref: none
+    ee_delta: [-0.03, 0.0, 0.0, 0.0, 0.0, 0.0]
+    rate_hz: 10.0
+    max_duration_s: 2.0
+    success_ee_travel_m: 0.04
+    expire_ms: 200

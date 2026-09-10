@@ -1,0 +1,11 @@
+# P4：state-only MLP rollout（PolicyBackend=lerobot_state）
+# checkpoint 可由 lab policy train 产出，或 ctrl-sim run --checkpoint 覆盖。
+profile: m5_policy_rollout
+policy_backend: lerobot_state
+# 相对 data-root；train 后也可改成绝对路径
+checkpoint: artifacts/policies/pol_state_p4_mvp/policy.npz
+duration_s: 15.0
+rate_hz: 10.0
+expire_ms: 200
+hold_on_miss: true
+chunk_size: 1

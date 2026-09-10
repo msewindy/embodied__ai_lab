@@ -1,16 +1,17 @@
-# Phase 1 验证测试方案 v1.4
+# Phase 1 验证测试方案 v1.4.7
 
 
 | 属性        | 内容                                                                                                                                                                                                                                                                      |
 | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **文档编号**  | INFRA-02                                                                                                                                                                                                                                                                |
-| **版本**    | v1.4                                                                                                                                                                                                                                                                    |
+| **版本**    | v1.4.7                                                                                                                                                                                                                                                                  |
 | **维护人**   | R2                                                                                                                                                                                                                                                                      |
-| **依据**    | [PLAN-FUSION-01](../plan/platform_wm_fusion_plan_v0.md) · [TECH-09](../architecture/platform_technical_architecture_v1.md) · [TECH-02](../software/ros2_interface_v1.md) · [TECH-04](../software/version_matrix_v1.md) · [TECH-13](../software/isaac_job_adapter_v1.md) |
+| **角色**    | Phase-1 **进度看板 SSOT** + 验收技术方案（结构见 STRUCT；操作见 SOP） |
+| **依据**    | [PLAN-FUSION-01](../plan/platform_wm_fusion_plan_v0.md) · [PLAN-STRUCT-01](../plan/lab_strategy_runtime_structure_v0.md) · [SOP](sop_franka_ctrl_sim_v0.md) · [TECH-09](../architecture/platform_technical_architecture_v1.md) · [TECH-02](../software/ros2_interface_v1.md) · [TECH-04](../software/version_matrix_v1.md) · [TECH-13](../software/isaac_job_adapter_v1.md) |
 | **主锚点设备** | `franka-01`（**Franka Research 3 + Hand**）                                                                                                                                                                                                                               |
-| **主场景**   | M2：**官方 FR3 USD**（禁止自研场景）；M4+：`tabletop_pickplace_v0` / Scene v0                                                                                                                                                                                                        |
+| **主场景**   | Task Pack `tabletop_pickplace_v0` + profile `m5_pickplace`；学闭环：`lab data export` / `lab policy train|rollout`                                                                                                                                                                        |
 | **回归设备**  | `quadruped-01`（Go2）— **不计入 Phase-1 主交付**                                                                                                                                                                                                                                |
-| **用途**    | Phase 1：Walking Skeleton → **FR3 控制仿真同构闭环**（ROS2 + Isaac）                                                                                                                                                                                                               |
+| **用途**    | Phase 1：Walking Skeleton → **FR3 控制仿真同构闭环**（ROS2 + Isaac）+ 双轨 + Index                                                                                                                                                                                                               |
 
 
 ---
@@ -21,7 +22,18 @@
 
 
 
-### 0.1 v1.3 → v1.4（本版）
+### 0.1 v1.4.5 → v1.4.6（本版）
+
+
+| 项 | v1.4.5 | v1.4.6 |
+| -- | ------ | ------ |
+| M6 | 后置 | **SOP 文档落地**；交叉签字可后补 |
+| Index | 未强制 | **P5 ArtifactHub** 默认注册 dataset/policy |
+| 学习栈 | export 为主 | + P4 `lerobot_state` 训/rollout（STRUCT） |
+| 文档角色 | 进度散落多文 | **本文 §1 = 进度看板唯一源** |
+
+
+### 0.2 v1.3 → v1.4（仍有效）
 
 
 | 项 | v1.3 | v1.4 |
@@ -31,7 +43,7 @@
 | M2 代码门禁 | 隐含「先写再跑」 | **显式前置**：msg / bridge / launch / hello 未建或未冒烟 → **不计 M2 通过** |
 
 
-### 0.2 v1.2 → v1.3（仍有效）
+### 0.3 v1.2 → v1.3（仍有效）
 
 
 | 项          | v1.2           | v1.3                                          |
@@ -44,7 +56,7 @@
 
 
 
-### 0.3 v1.1 → v1.2（仍有效）
+### 0.4 v1.1 → v1.2（仍有效）
 
 主锚点 Go2→FR3；E 序列引入 M0–M6；Go2 真机后置。世界模型 SSOT：`external/world_model/docs/FR3*.md`。
 
@@ -68,11 +80,16 @@
 | **M3** | RunManager 归档一次 FR3 控制仿真 `run`                | ws-02    | F1-1   | ✅   | 2026-08-04  |
 | **M4** | 录 1 条可回放（日志轨或 LeRobot）                        | ws-02    | F1-3   | ✅   | 2026-08-05  |
 | **M5** | Mid 最小：Template MidGoal + stub/Oracle         | ws-02    | F1-4   | ✅   | 2026-08-05  |
-| **M6** | PreFlight/SOP：成员按清单独立开跑                       | ws-02    | F1-5   | ⬜   |             |
+| **Scene** | Task Pack + `m5_pickplace` 抓放闭环 + `eval.json` | ws-02    | （STRUCT P0–P2） | ✅   | 2026-08-06  |
+| **B 轨** | `lab data export --format lerobot-v3` + manifest 互链 | ws-02 | F1-3 补齐 | ✅   | 2026-08-06  |
+| **P4** | `PolicyBackend` + `lab policy train/rollout`（state MLP） | ws-02 | STRUCT §9 | ✅ | 2026-08-06 |
+| **P5** | Dataset/Policy 进 Index（默认注册） | ws-02 | STRUCT §9 | ✅ | 2026-08-07 |
+| **M6** | PreFlight/SOP：成员按清单独立开跑                       | ws-02    | F1-5   | ✅ E2E | 2026-08-07 |
 
 
-**Phase-1 主交付**：E0 + M0 + E1 + **M2～M6**。  
-**一句话出口**：任意成员能按 SOP 启动一次「FR3 桌面抓放**控制仿真**」：有 `run_id`、有 High/Mid/Low 最小 ROS2 链路、有可回放数据。
+**Phase-1 主交付**：E0 + M0 + E1 + **M2～M5** + **Scene/`m5_pickplace`** + B 轨 export + **P5 Index** + **M6 E2E 手动验收 PASS**。  
+**一句话出口（当前）**：经 L0 跑通抓放与学闭环：`run_id` → A/B 轨 → `pol_*`/`ds_*` Index；E2E 见 [`sop_franka_ctrl_sim_e2e_validation_v0.md`](sop_franka_ctrl_sim_e2e_validation_v0.md)。  
+**下一阶段**：真机 FR3（DOMAIN **42**）→ [`phase2_franka_real_e2e_plan_v0.md`](phase2_franka_real_e2e_plan_v0.md)。
 
 ### 1.2 回归（Go2 · 不阻塞）
 
@@ -640,20 +657,25 @@ lab --data-root ~/embodied-ai-lab-data ctrl-sim run \
 
 
 
-**已实现（A 轨 · 2026-08-05）**
+**已实现（A 轨 · 2026-08-05；B 轨 export · 2026-08-06）**
 
 ```bash
-# 录制（挂在 M3 run 上）
+# 正式 run 默认录 A 轨（调试可加 --no-record）
 lab --data-root ~/embodied-ai-lab-data ctrl-sim run \
-  --device franka-01 --scene tabletop_pickplace_v0_min \
-  --profile m2_hello --record --keep-launch
+  --device franka-01 --scene tabletop_pickplace_v0 \
+  --profile m5_pickplace --keep-launch
 
-# 回放
+# 回放 A
 lab --data-root ~/embodied-ai-lab-data ctrl-sim replay \
   --run-id <run_id> --device franka-01
+
+# 导出 B（LeRobot Dataset v3；字段映射见 docs/data/low_jsonl_to_lerobot_v3.md）
+lab --data-root ~/embodied-ai-lab-data data export \
+  --run-id <run_id> --format lerobot-v3
 ```
 
-产物：`runs/ctrl_sim/<run_id>/logs/low.jsonl` + `replay_metrics.json`；manifest.`tracks.A`。
+产物：`logs/low.jsonl` + `replay_metrics.json`；manifest.`tracks.A`；  
+B：`<data-root>/datasets/lerobot_v3/<run_id>/` + manifest.`tracks.B` / `lerobot_dataset_path`。
 
 
 
@@ -661,7 +683,7 @@ lab --data-root ~/embodied-ai-lab-data ctrl-sim replay \
 
 1. 产物落在对应 `run_id` 下
 2. 一键/文档化回放命令可复现
-3. manifest 标明轨道 A/B 路径
+3. manifest 标明轨道 A/B 路径（B 经 `lab data export` 写回）
 
 ---
 
@@ -734,27 +756,31 @@ python3 lab_platform/scripts/m5_mid_template.py --domain 43
 
 ## 十、M6 — 技术方案与执行（SOP）
 
+> **状态：文档已落地（2026-08-07）。** 交叉签字可后补；不阻塞 Scene / P5。
+
 
 
 ### 10.1 目标
 
-非作者按文档独立完成一次 **M3+M4 级** CTRL-SIM 实验。
+非作者按文档独立完成一次 **控制回归** 与（可选）一次 **学习路径**（export→train→list/lineage）。
 
-### 10.2 SOP 必含章节（文档落点建议）
+### 10.2 SOP 落点
 
-`docs/infra/sop_franka_ctrl_sim_v0.md`（M6 前写成）：
+[`docs/infra/sop_franka_ctrl_sim_v0.md`](sop_franka_ctrl_sim_v0.md)：
 
-1. 环境：DOMAIN=43、source ROS、venv
-2. 启动顺序：Isaac → launch → `lab ctrl-sim run`
-3. 如何查看 `run_id` / manifest / 日志
-4. 正常停止与急停（软件）
-5. 常见故障表（链到本文 §六.9）
+1. 入口分流：控制回归 vs 学习实验
+2. 环境：DOMAIN=43、source ROS、venv
+3. 启动顺序：Isaac → launch → `lab ctrl-sim run`（Reset 后重启 bridge）
+4. `run_id` / manifest / `lab list --artifacts` / `lab lineage`
+5. 默认 Index 注册；`--no-register` 退出
+6. 正常停止与软件急停
+7. 常见故障表（链到本文 §六.9）
 
 
 
 ### 10.3 验收标准（M6）
 
-R1 或交叉角色签字/纪要：「按 SOP 独立完成一次仿真实验」。
+R1 或交叉角色签字/纪要：「按 SOP 独立完成一次仿真实验」。文档勾选见 SOP §7。
 
 ---
 
@@ -768,20 +794,23 @@ R1 或交叉角色签字/纪要：「按 SOP 独立完成一次仿真实验」�
 
 
 
-## 十二、本周优先（更新）
+## 十二、里程碑收口与下一步
 
 
-| 序号  | 任务                               | 验收       |
-| --- | -------------------------------- | -------- |
-| 1   | msg 扩展 + `franka_sim_bridge` MVP + launch/hello | ✅ §6.0 门禁 |
-| 2   | **M2** CTRL-SIM Hello（官方 FR3 USD）            | ✅ §六.8（2026-08-04） |
-| 3   | **M3** Run 归档（真 ROS run_context + 自动 launch） | ✅ §七.5 |
-| 4   | **M4** 录回放（A 轨 `--record` / `replay`） | ✅ §八.4 |
-| 5   | **M5** 薄 Mid（`m5_template`）     | ✅ §九.4 |
-| 6   | **M6** SOP                         | §十       |
+### 12.1 已完成（摘要）
 
+见 §1.1 全表。Phase-1 **主交付已齐**；**M6 E2E 手动验收 PASS**（2026-08-07，清单 SOP-CTRL-SIM-E2E-01）。
 
-**不要做**：Go2 真机主攻；Mid 五模块进 RunManager；CTRL-SIM 用 DOMAIN 42。
+### 12.2 下一步（Phase-2 主攻）
+
+| 序号 | 任务 | 说明 |
+| --- | ---- | ---- |
+| 1 | **加深 L1** | 本仓 [`strategy_runtime/`](../../strategy_runtime/README.md)（STRUCT v0.3）；仿真优先 |
+| 2 | CTRL-SIM 日常回归 | `m5_pickplace` + `policy rollout --checkpoint pol_state_p4_mvp` |
+| 3 | ACT / 视觉 / 相机 B 轨 | L1 边界稳定后选做 |
+| 4 | 真机 FR3 | **暂缓**；计划见 [`phase2_franka_real_e2e_plan_v0.md`](phase2_franka_real_e2e_plan_v0.md) |
+
+**不要做**：真机抢仿真 L1 深化；CTRL-SIM 误用 DOMAIN 42；把 Mid/Policy 继续堆回 `lab_platform/ctrl_sim` 核心。
 
 ---
 
@@ -808,7 +837,12 @@ R1 或交叉角色签字/纪要：「按 SOP 独立完成一次仿真实验」�
 
 | 文档                                                               | 用途                            |
 | ---------------------------------------------------------------- | ----------------------------- |
-| [PLAN-FUSION-01](../plan/platform_wm_fusion_plan_v0.md)          | 融合宪法；双模式已同步                   |
+| [PLAN-FUSION-01](../plan/platform_wm_fusion_plan_v0.md)          | 融合宪法；双模式；指向 STRUCT            |
+| [PLAN-STRUCT-01](../plan/lab_strategy_runtime_structure_v0.md)   | L0×L1×L2 结构 SSOT；演进 P0–P5     |
+| [SOP-CTRL-SIM-01](sop_franka_ctrl_sim_v0.md)                     | M6：控制回归 vs 学习实验入口       |
+| [SOP-CTRL-SIM-E2E-01](sop_franka_ctrl_sim_e2e_validation_v0.md) | M6 端到端手动验收（**PASS 2026-08-07**） |
+| [PHASE2-FR3-REAL](phase2_franka_real_e2e_plan_v0.md)             | 真机 FR3 E2E 计划（Phase-2）     |
+| [DATA-MAP-01](../data/low_jsonl_to_lerobot_v3.md)                | A→B 字段映射                      |
 | [TECH-09](../architecture/platform_technical_architecture_v1.md) | 部署视图；ws-02 双模式                |
 | [TECH-02](../software/ros2_interface_v1.md)                      | Topic/msg                     |
 | [TECH-04](../software/version_matrix_v1.md)                      | 版本与 DOMAIN                    |
@@ -835,8 +869,11 @@ R1 或交叉角色签字/纪要：「按 SOP 独立完成一次仿真实验」�
 | v1.4.2   | 2026-08-04 | **M3 收口**：真 ROS `/system/run_context`；缺 bridge 时自动 `franka_ctrl_sim.launch`；进度表 M3→✅ |
 | v1.4.3   | 2026-08-05 | **M4 A 轨通过**：`--record` 51 帧 + `replay`；manifest tracks.A；相对 Δpose 开环误差仅作旁证 |
 | v1.4.4   | 2026-08-05 | **M5 通过**：`m5_template` APPROACH→RETREAT 两步 success；`mid_steps.json`；task_space only |
+| v1.4.5   | 2026-08-06 | **Scene/`m5_pickplace` 验收**；正式 run 默认录 A；`lab data export lerobot-v3`；**M6 后置**；挂钩 STRUCT |
+| v1.4.6   | 2026-08-07 | **P5** ArtifactHub 默认注册；**M6 SOP** `sop_franka_ctrl_sim_v0.md`；交叉签字可后补 |
+| v1.4.7   | 2026-08-07 | **M6 E2E PASS**；Phase-1 收口；下一阶段 → 真机 FR3 计划 |
 
 
 ---
 
-*INFRA-02 v1.4.1 | Phase 1 · FR3 控制仿真同构闭环*
+*INFRA-02 v1.4.7 | Phase 1 收口 · 下一阶段真机 FR3*

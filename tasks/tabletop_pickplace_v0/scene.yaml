@@ -1,0 +1,121 @@
+# tabletop_pickplace_v0 — 可执行子集（数值 SSOT: external/world_model/docs/FR3_Scene_v0_场景规格.md）
+# 标定门禁未完成项见 scene_pin.md；ee_home / t_flange_tcp 待实测覆盖。
+
+scene_id: tabletop_pickplace_v0
+schema_version: hier_scene_v0.2
+robot: franka_fr3_hand
+backend: isaac_sim
+task_language_default: "把红色杯子放到碗里。"
+success_hold_s: 2.0
+record_fps: 10
+control_hz: 50
+
+# 供未来 B 轨 / LeRobot meta/info.json 对齐（STRUCT §5.4）
+action_schema:
+  type: ee_delta_gripper
+  ee_delta_dim: 6
+  gripper_dim: 1
+  frame_id: fr3_link0
+# P4.4 观测约定：空列表=无视觉；接入后示例：
+# cameras:
+#   - key: observation.images.third_person
+#     prim: /World/CameraThirdPerson
+#     fps: 10
+#     encoding: mp4
+cameras: []
+
+frames:
+  task_origin: fr3_link0
+  tcp: fr3_tcp
+  z_table: 0.0
+  base_z_offset: 0.0
+
+robot_cfg:
+  articulation_prim: /fr3
+  q_home_rad: [0.0, -0.785, 0.0, -2.356, 0.0, 1.571, 0.785]
+  # 名义值；P-1 标定后以实测覆盖并升补丁版
+  t_flange_tcp_m: [0.0, 0.0, 0.103]
+  ee_home_m: null
+  gripper_home: 0.0
+  workspace_box_m:
+    x: [0.25, 0.70]
+    y: [-0.40, 0.40]
+    z: [0.01, 0.55]
+
+table:
+  size_lwh_m: [0.80, 0.60, 0.04]
+  top_center_xy_m: [0.50, 0.0]
+
+objects:
+  red_cup:
+    outer_diameter_m: 0.065
+    height_m: 0.100
+    mass_kg: 0.05
+    # 仿真稳定：阻尼/恢复系数（组装 USD 写入；不改变几何 SSOT）
+    linear_damping: 2.0
+    angular_damping: 3.0
+    restitution: 0.0
+    friction_static: 0.9
+    friction_dynamic: 0.7
+  bowl:
+    outer_diameter_m: 0.140
+    height_m: 0.055
+    base_center_m: [0.58, -0.18, 0.0]
+    # 碰撞：薄垫片（避免实心柱穿透弹飞）；外观仍用完整高度圆柱（无碰撞）
+    collision_mode: pad
+    collision_pad_height_m: 0.008
+    restitution: 0.0
+    friction_static: 0.9
+    friction_dynamic: 0.7
+
+cup_grid:
+  spacing_m: 0.06
+  # id -> [x, y]；z = 0（桌面）；默认试用格点 4
+  default_grid_id: 4
+  cells:
+    0: [0.36, 0.16]
+    1: [0.42, 0.16]
+    2: [0.48, 0.16]
+    3: [0.36, 0.10]
+    4: [0.42, 0.10]
+    5: [0.48, 0.10]
+    6: [0.36, 0.04]
+    7: [0.42, 0.04]
+    8: [0.48, 0.04]
+
+camera:
+  key: observation.images.third_person
+  resolution: [640, 480]
+  fov_v_deg: 60
+  fps: 10
+  position_m: [0.50, 0.55, 0.45]
+  look_at_m: [0.48, 0.00, 0.05]
+  up: [0.0, 0.0, 1.0]
+
+pregrasp:
+  approach_offset_m: 0.12
+  height_delta_m: 0.02
+  gripper_width_open_m: 0.080   # 与 bridge GRIPPER_WIDTH_OPEN 对齐
+  grasp_close_width_m: 0.045   # → gripper≈0.44（勿用 0.9，会夹穿 Ø65mm 杯）
+  h_lift_m: 0.08
+  above_bowl_z_m: 0.20         # 提高搬运高度，减少擦碰
+  place_clearance_m: 0.025     # 释放时杯底相对碗顶净空（防穿透弹飞）
+  retreat_m: [0.35, 0.0, 0.35]
+
+predicates:
+  approach_eps_pos_m: 0.015
+  approach_eps_rot_rad: 0.15
+  goal_horizontal_m: 0.045
+  goal_tilt_deg: 15.0
+  success_hold_s: 2.0
+  retreat_eps_m: 0.03
+
+oracle:
+  # P1：PoseStamped，frame_id=fr3_link0
+  cup_pose_topic: /perception/scene/red_cup/pose
+  bowl_pose_topic: /perception/scene/bowl/pose
+
+profiles:
+  m5_template: profiles/m5_template.yaml
+  m5_approach_target: profiles/m5_approach_target.yaml
+  m5_pickplace: profiles/m5_pickplace.yaml

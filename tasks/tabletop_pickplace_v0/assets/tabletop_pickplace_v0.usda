@@ -1,0 +1,417 @@
+#usda 1.0
+(
+    "tabletop_pickplace_v0; cup_grid_id=4; bowl_collision=pad; q_home_deg=[0.0, -44.9772, 0.0, -134.9889, 0.0, 90.0117, 44.9772]; subLayer=../../../frankaFR3.usd"
+    customLayerData = {
+        dictionary cameraSettings = {
+            dictionary Front = {
+                double3 position = (5, 0, 0)
+                double radius = 5
+            }
+            dictionary Perspective = {
+                double3 position = (0.45961499200642464, 2.985429681000398, 1.3059297101592349)
+                double3 target = (0.5688979022489016, -8.362718004496937, -2.552809284509149)
+            }
+            dictionary Right = {
+                double3 position = (0, -5, 0)
+                double radius = 5
+            }
+            dictionary Top = {
+                double3 position = (0, 0, 5)
+                double radius = 5
+            }
+            string boundCamera = "/OmniverseKit_Persp"
+        }
+        dictionary omni_layer = {
+            string authoring_layer = "./tabletop_pickplace_v0.usda"
+        }
+        dictionary renderSettings = {
+        }
+    }
+    defaultPrim = "World"
+    metersPerUnit = 1
+    subLayers = [
+        @../../../frankaFR3.usd@
+    ]
+    upAxis = "Z"
+)
+
+def Xform "World"
+{
+    def Cube "Table" (
+        prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI", "PhysicsRigidBodyAPI", "PhysicsMaterialAPI"]
+    )
+    {
+        rel material:binding = </World/Table/Looks/Preview>
+        float physics:dynamicFriction = 0.7
+        bool physics:kinematicEnabled = 1
+        float physics:restitution = 0
+        float physics:staticFriction = 0.8
+        double size = 1
+        float3 xformOp:scale = (0.8, 0.6, 0.04)
+        double3 xformOp:translate = (0.5, 0, -0.02)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+
+        def "Looks"
+        {
+            def Material "Preview"
+            {
+                token outputs:surface.connect = </World/Table/Looks/Preview/Shader.outputs:surface>
+
+                def Shader "Shader"
+                {
+                    uniform token info:id = "UsdPreviewSurface"
+                    color3f inputs:diffuseColor = (0.75, 0.75, 0.72)
+                    float inputs:roughness = 0.7
+                    token outputs:surface
+                }
+            }
+        }
+    }
+
+    def Cylinder "red_cup" (
+        prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI", "PhysicsRigidBodyAPI", "PhysicsMassAPI", "PhysicsMaterialAPI"]
+    )
+    {
+        uniform token axis = "Z"
+        double height = 0.1
+        rel material:binding = </World/red_cup/Looks/Preview>
+        float physics:dynamicFriction = 0.7
+        float physics:mass = 0.05
+        float physics:restitution = 0
+        float physics:staticFriction = 0.9
+        custom float physxRigidBody:angularDamping = 3
+        custom float physxRigidBody:linearDamping = 2
+        double radius = 0.0325
+        double3 xformOp:translate = (0.42, 0.1, 0.05)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def "Looks"
+        {
+            def Material "Preview"
+            {
+                token outputs:surface.connect = </World/red_cup/Looks/Preview/Shader.outputs:surface>
+
+                def Shader "Shader"
+                {
+                    uniform token info:id = "UsdPreviewSurface"
+                    color3f inputs:diffuseColor = (0.85, 0.12, 0.1)
+                    float inputs:roughness = 0.7
+                    token outputs:surface
+                }
+            }
+        }
+    }
+
+    def Xform "bowl"
+    {
+        double3 xformOp:translate = (0.58, -0.18, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "visual" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            uniform token axis = "Z"
+            double height = 0.055
+            rel material:binding = </World/bowl/visual/Looks/Preview>
+            double radius = 0.07
+            double3 xformOp:translate = (0, 0, 0.0275)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def "Looks"
+            {
+                def Material "Preview"
+                {
+                    token outputs:surface.connect = </World/bowl/visual/Looks/Preview/Shader.outputs:surface>
+
+                    def Shader "Shader"
+                    {
+                        uniform token info:id = "UsdPreviewSurface"
+                        color3f inputs:diffuseColor = (0.55, 0.55, 0.58)
+                        float inputs:roughness = 0.7
+                        token outputs:surface
+                    }
+                }
+            }
+        }
+
+        def Cylinder "collision_pad" (
+            prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI", "PhysicsRigidBodyAPI", "PhysicsMaterialAPI"]
+        )
+        {
+            uniform token axis = "Z"
+            double height = 0.008
+            rel material:binding = </World/bowl/collision_pad/Looks/Preview>
+            float physics:dynamicFriction = 0.7
+            bool physics:kinematicEnabled = 1
+            float physics:restitution = 0
+            float physics:staticFriction = 0.9
+            double radius = 0.07
+            double3 xformOp:translate = (0, 0, 0.051000000000000004)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def "Looks"
+            {
+                def Material "Preview"
+                {
+                    token outputs:surface.connect = </World/bowl/collision_pad/Looks/Preview/Shader.outputs:surface>
+
+                    def Shader "Shader"
+                    {
+                        uniform token info:id = "UsdPreviewSurface"
+                        color3f inputs:diffuseColor = (0.45, 0.45, 0.48)
+                        float inputs:roughness = 0.7
+                        token outputs:surface
+                    }
+                }
+            }
+        }
+    }
+
+    def Xform "CameraThirdPerson"
+    {
+        custom string scene:cameraKey = "observation.images.third_person"
+        custom double3 scene:lookAt = (0.48, 0, 0.05)
+        double3 xformOp:translate = (0.5, 0.55, 0.45)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+}
+
+over "fr3"
+{
+    over "fr3_link0"
+    {
+        over "fr3_joint1"
+        {
+            float drive:angular:physics:targetPosition = 0
+            custom float state:angular:physics:position = 0
+            float state:angular:physics:velocity = 0
+        }
+    }
+
+    over "fr3_link1"
+    {
+        over "fr3_joint2"
+        {
+            float drive:angular:physics:targetPosition = -44.97719
+            bool[] isaac:actuator (
+                displayName = "Actuator"
+            )
+            string isaac:NameOverride (
+                displayName = "Joint Name Override"
+            )
+            token[] isaac:physics:DofOffsetOpOrder (
+                displayName = "Dof Offset Op Order"
+            )
+            custom float state:angular:physics:position = -44.97719
+            float state:angular:physics:velocity = 0
+        }
+    }
+
+    over "fr3_link2"
+    {
+        over "fr3_joint3"
+        {
+            float drive:angular:physics:targetPosition = 0
+            custom float state:angular:physics:position = 0
+            float state:angular:physics:velocity = 0
+        }
+    }
+
+    over "fr3_link3"
+    {
+        over "fr3_joint4"
+        {
+            float drive:angular:physics:targetPosition = -134.98886
+            custom float state:angular:physics:position = -134.98886
+            float state:angular:physics:velocity = 0
+        }
+    }
+
+    over "fr3_link4"
+    {
+        over "fr3_joint5"
+        {
+            float drive:angular:physics:targetPosition = 0
+            custom float state:angular:physics:position = 0
+            float state:angular:physics:velocity = 0
+        }
+    }
+
+    over "fr3_link5"
+    {
+        over "fr3_joint6"
+        {
+            float drive:angular:physics:targetPosition = 90.01167
+            custom float state:angular:physics:position = 90.01167
+            float state:angular:physics:velocity = 0
+        }
+    }
+
+    over "fr3_link6"
+    {
+        over "fr3_joint7"
+        {
+            float drive:angular:physics:targetPosition = 44.97719
+            custom float state:angular:physics:position = 44.97719
+            float state:angular:physics:velocity = 0
+        }
+    }
+
+    over "fr3_link7"
+    {
+    }
+
+    over "fr3_link8"
+    {
+    }
+
+    over "fr3_hand"
+    {
+        over "fr3_finger_joint1"
+        {
+            float state:linear:physics:position = 0
+            float state:linear:physics:velocity = 0
+        }
+
+        over "fr3_finger_joint2"
+        {
+            float state:linear:physics:position = 0
+            float state:linear:physics:velocity = 0
+        }
+    }
+
+    over "fr3_leftfinger"
+    {
+    }
+
+    over "fr3_rightfinger"
+    {
+    }
+
+    over "fr3_hand_tcp"
+    {
+    }
+}
+
+over "Render"
+{
+    over "OmniverseKit"
+    {
+        over "HydraTextures"
+        {
+            over "omni_kit_widget_viewport_ViewportTexture_0"
+            {
+                rel camera = </OmniverseKit_Persp>
+                bool omni:rtx:rt:ecoMode:enabled
+                rel orderedVars = </Render/Vars/LdrColor>
+                custom bool overrideClipRange = 0
+                uniform int2 resolution = (1280, 720)
+            }
+        }
+    }
+}
+
+over "OmniverseKit_Persp" (
+    prepend apiSchemas = ["OmniRtxCameraAutoExposureAPI_1", "OmniRtxCameraExposureAPI_1"]
+    customData = {
+        dictionary omni = {
+            dictionary kit = {
+                bool hide_in_stage_window = 1
+                bool no_delete = 1
+            }
+        }
+    }
+    hide_in_stage_window = true
+    kind = "component"
+    no_delete = true
+)
+{
+    float2 clippingRange = (0.01, 10000000)
+    float exposure:fStop = 5
+    float exposure:responsivity = 1.1026709
+    float exposure:time = 0.02
+    float focalLength = 18.147562
+    float focusDistance = 400
+    custom uniform vector3d omni:kit:centerOfInterest = (3.880983557207865e-16, 0, -11.986753742164886)
+    float3 xformOp:rotateXYZ = (71.22111, 1.9878468e-15, -179.44826)
+    float3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (0.45961499200642464, 2.985429681000398, 1.3059297101592349)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+}
+
+over "OmniverseKit_Front" (
+    customData = {
+        dictionary omni = {
+            dictionary kit = {
+                bool hide_in_stage_window = 1
+                bool no_delete = 1
+            }
+        }
+    }
+    hide_in_stage_window = true
+    kind = "component"
+    no_delete = true
+)
+{
+    float2 clippingRange = (1, 10000000)
+    float horizontalAperture = 50
+    custom uniform vector3d omni:kit:centerOfInterest = (0, 0, -5)
+    token projection = "orthographic"
+    float verticalAperture = 50
+    float3 xformOp:rotateXYZ = (90, -1.2722219e-14, 90)
+    float3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (5, 0, 0)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+}
+
+over "OmniverseKit_Right" (
+    customData = {
+        dictionary omni = {
+            dictionary kit = {
+                bool hide_in_stage_window = 1
+                bool no_delete = 1
+            }
+        }
+    }
+    hide_in_stage_window = true
+    kind = "component"
+    no_delete = true
+)
+{
+    float2 clippingRange = (1, 10000000)
+    float horizontalAperture = 50
+    custom uniform vector3d omni:kit:centerOfInterest = (0, 0, -5)
+    token projection = "orthographic"
+    float verticalAperture = 50
+    float3 xformOp:rotateXYZ = (90, -1.41245e-30, 1.2722219e-14)
+    float3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (0, -5, 0)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+}
+
+over "OmniverseKit_Top" (
+    customData = {
+        dictionary omni = {
+            dictionary kit = {
+                bool hide_in_stage_window = 1
+                bool no_delete = 1
+            }
+        }
+    }
+    hide_in_stage_window = true
+    kind = "component"
+    no_delete = true
+)
+{
+    float2 clippingRange = (1, 10000000)
+    float horizontalAperture = 50
+    custom uniform vector3d omni:kit:centerOfInterest = (0, 0, -5)
+    token projection = "orthographic"
+    float verticalAperture = 50
+    float3 xformOp:rotateXYZ = (-1.2722219e-14, -7.016709e-15, -90)
+    float3 xformOp:scale = (1, 1, 1)
+    double3 xformOp:translate = (0, 0, 5)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+}
+

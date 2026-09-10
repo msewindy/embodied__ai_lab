@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "strategy-runtime"
+version = "0.1.0"
+description = "L1 Strategy Runtime：Mid / PolicyBackend / 世界上下文（非 Lab OS）"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pyyaml>=6.0",
+    "numpy>=1.26",
+    "pandas>=2.0",
+    "pyarrow>=14",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["strategy_runtime*"]

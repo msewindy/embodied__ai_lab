@@ -80,4 +80,26 @@ Get-Item .\external\world_model | Select-Object FullName, LinkType, Target
 
 ---
 
+## 开源对标源码（本地挂载 · L1 设计前调研）
+
+| 项 | 值 |
+|----|-----|
+| 挂载点 | `external/oss_refs/` |
+| 源路径 | `~/project/oss_refs/`（与本仓同级 `project/` 下，**仓库外**） |
+| 创建方式 | symlink（见下） |
+| 索引文档 | [`docs/research/oss_framework_survey_v0.md`](../docs/research/oss_framework_survey_v0.md) |
+
+```bash
+mkdir -p ~/project/oss_refs
+cd ~/project/embodied__ai_lab
+ln -sfn ../oss_refs external/oss_refs
+ls external/oss_refs
+```
+
+已浅克隆 / 链接的仓（详见调研索引）：LeRobot、Isaac Lab（链到 `~/IsaacLab`）、ManiSkill、robomimic、robosuite、diffusion_policy、LIBERO、OpenVLA、Octo、MimicGen、RoboCasa、RDT 等。
+
+**禁止**把上述大仓以 Submodule 或实体目录提交进本 Git。
+
+---
+
 *维护：R1 · 机制说明随仓库提交；挂载内容始终留在源目录*

@@ -28,6 +28,12 @@ def make_policy_id(task_slug: str) -> str:
     return f"pol_{_ts()}_{slug}"
 
 
+def make_dataset_id(source_run_id: str) -> str:
+    """单 run 导出：稳定 id，便于 overwrite 后 upsert。"""
+    slug = source_run_id.replace("-", "_")[:48]
+    return f"ds_{slug}"
+
+
 def make_demo_id(device_id: str) -> str:
     return f"demo_{_ts()}_{device_id}"
 

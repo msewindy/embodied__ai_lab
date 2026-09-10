@@ -2,26 +2,29 @@
 
 | 属性 | 内容 |
 |------|------|
-| **版本** | v1.1 |
+| **版本** | v1.2 |
+| **日期** | 2026-08-07 |
 | **维护人** | R2 |
-| **依据** | [governance_index_v1.md](../org/governance_index_v1.md) · [plan_review_w1.md](../meeting/plan_review_w1.md) |
-| **架构基线** | TECH-09 v1.1 |
+| **依据** | [governance_index](../org/governance_index_v1.md) · [PLAN-STRUCT-01](../plan/lab_strategy_runtime_structure_v0.md) |
+| **架构基线** | TECH-09 · **若冲突以 STRUCT / INFRA / TECH-14 As-Built 为准** |
+
+> **注意：** Phase-1 主路径已是 **CTRL-SIM + Task Pack + 双轨 + ArtifactHub**（见 [TECH-14 v1.2](../architecture/platform_architecture_as_built_v1.md)）。下列 MDD 仍描述 Walking Skeleton / Pipeline A–C 目标拆分，**不覆盖** CTRL-SIM 实现细节。
 
 ---
 
-## 开发顺序
+## 开发顺序（历史骨架 → 当前）
 
 ```
-TECH-09 approved + P0 规范
-  → ⓪ Walking Skeleton（lab_platform 包，接口 + Stub）  ← 当前
-  → ① F7 IndexService（已内嵌 SQLite 真实实现）
-  → ② F7 RunManager (+ PreFlight + Scheduler)
-  → ③ Isaac Job Adapter（替换 StubIsaacLauncher）
-  → ④ Pipeline C（替换 StubRealRuntime.bringup/calibrate）
-  → ⑤ Real 栈 (F5/F6) + ros2_interface_v1
+TECH-09 + P0 规范
+  → ⓪ Walking Skeleton（接口 + Stub）           ✅
+  → ① F7 IndexService / RunManager               ✅
+  → ①b CTRL-SIM + franka_sim_bridge + Task Pack ✅  ← 当前主路径（非 MDD 原文范围）
+  → ③ Isaac Job Adapter（BATCH / 真 train）       后置
+  → ④ Pipeline C 真机 bringup/calibrate           后置
+  → ⑤ Real 栈 (F5/F6) DOMAIN 42                   后置
 ```
 
-**Walking Skeleton 代码**：`lab_platform/` · 设计 `framework_skeleton_design_v1.md`
+**代码**：`lab_platform/` · `ros2/` · `tasks/` · 骨架设计 `framework_skeleton_design_v1.md`
 
 ```bash
 cd lab_platform && pip install -e .

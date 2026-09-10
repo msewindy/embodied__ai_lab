@@ -66,3 +66,5 @@ temp/
 # 只忽略挂载点，保留 external/README.md 与建链说明
 /external/world_model/
 /external/world_model
+/external/oss_refs/
+/external/oss_refs

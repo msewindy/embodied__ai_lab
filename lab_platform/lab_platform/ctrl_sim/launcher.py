@@ -16,7 +16,7 @@ from lab_platform.models import RunExecutionResult
 
 CTRL_SIM_DOMAIN = 43
 DEFAULT_BACKEND = "isaac_sim"
-DEFAULT_SCENE = "tabletop_pickplace_v0_min"
+DEFAULT_SCENE = "tabletop_pickplace_v0"
 LAUNCH_WAIT_S = 30.0
 
 
@@ -64,6 +64,35 @@ def _hello_script() -> Path:
 
 def _m5_script() -> Path:
     return _script_path("m5_mid_template.py")
+
+
+def _policy_rollout_script() -> Path:
+    return _script_path("m5_policy_rollout.py")
+
+
+def _resolve_policy_checkpoint(
+    override: str | None,
+    profile_yaml: Path | None,
+    data_root: Path,
+) -> Path | None:
+    """CLI override > profile checkpoint（绝对路径或相对 data_root）。"""
+    import yaml
+
+    candidates: list[Path] = []
+    if override:
+        candidates.append(Path(override).expanduser())
+    if profile_yaml is not None and profile_yaml.is_file():
+        raw = yaml.safe_load(profile_yaml.read_text(encoding="utf-8")) or {}
+        rel = raw.get("checkpoint")
+        if rel:
+            candidates.append(Path(str(rel)).expanduser())
+    for c in candidates:
+        if c.is_file():
+            return c.resolve()
+        under = (Path(data_root) / c).resolve()
+        if under.is_file():
+            return under
+    return None
 
 
 def _read_isaac_version() -> str:
@@ -155,6 +184,8 @@ class CtrlSimLauncher:
         self.keep_launch: bool = False
         self.record: bool = False
         self.record_fps: float = 10.0
+        self.policy_checkpoint: str | None = None
+        self.policy_id: str | None = None
 
     def run(
         self,
@@ -171,6 +202,7 @@ class CtrlSimLauncher:
         record: bool | None = None,
         record_fps: float | None = None,
         dx: float = 0.05,
+        policy_checkpoint: str | None = None,
     ) -> RunExecutionResult:
         if auto_launch is None:
             auto_launch = self.auto_launch
@@ -185,6 +217,31 @@ class CtrlSimLauncher:
         logs.mkdir(parents=True, exist_ok=True)
         os.environ["ROS_DOMAIN_ID"] = str(domain)
         os.environ.setdefault("RMW_IMPLEMENTATION", "rmw_cyclonedds_cpp")
+
+        from lab_platform.ctrl_sim.task_pack import (
+            TaskPackError,
+            resolve_scene_for_ctrl_sim,
+        )
+
+        sid = scene_id or DEFAULT_SCENE
+        try:
+            pack, pack_warn = resolve_scene_for_ctrl_sim(
+                sid, data_root=self._config.data_root
+            )
+        except TaskPackError as e:
+            return RunExecutionResult(
+                False,
+                f"Task Pack error: {e}",
+                extra={"scene_id": sid, "ros_domain_id": domain},
+            )
+        if pack is not None:
+            (logs / "scene_pack.json").write_text(
+                json.dumps(pack.summary(), indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+            shutil.copy2(pack.scene_yaml, logs / "scene.yaml")
+        elif pack_warn:
+            (logs / "scene_pack_warn.txt").write_text(pack_warn + "\n", encoding="utf-8")
 
         ns = device_id.replace("-", "_")
         lab_topics = [
@@ -274,10 +331,14 @@ class CtrlSimLauncher:
                 encoding="utf-8",
             )
 
-        if profile not in ("m2_hello", "m5_template"):
+        mid_profiles = ("m5_template", "m5_approach_target", "m5_pickplace")
+        policy_profiles = ("m5_policy_rollout",)
+        if profile not in ("m2_hello",) + mid_profiles + policy_profiles:
             if launched and not keep_launch:
                 self._stop_launch(logs)
             return RunExecutionResult(False, f"unsupported profile: {profile}")
+
+        ckpt_arg = policy_checkpoint or self.policy_checkpoint
 
         if profile == "m2_hello":
             script = _hello_script()
@@ -294,10 +355,10 @@ class CtrlSimLauncher:
             ]
             pass_token = "PASS field check"
             timeout_s = 120
-        else:
-            script = _m5_script()
-            profile_log = logs / "m5_mid_template.log"
-            steps_log = logs / "mid_steps.json"
+        elif profile in policy_profiles:
+            script = _policy_rollout_script()
+            profile_log = logs / "m5_policy_rollout.log"
+            steps_log = logs / "policy_steps.json"
             cmd = [
                 sys.executable,
                 str(script),
@@ -310,8 +371,46 @@ class CtrlSimLauncher:
                 "--steps-log",
                 str(steps_log),
             ]
+            tmpl = pack.profile_path(profile) if pack is not None else None
+            if tmpl is not None:
+                cmd.extend(["--template", str(tmpl)])
+            # resolve checkpoint: CLI override → profile relative to data_root
+            resolved_ckpt = _resolve_policy_checkpoint(
+                ckpt_arg, tmpl, self._config.data_root
+            )
+            if resolved_ckpt is not None:
+                cmd.extend(["--checkpoint", str(resolved_ckpt)])
             pass_token = '"success": true'
-            timeout_s = 180
+            timeout_s = 120
+        else:
+            script = _m5_script()
+            profile_log = logs / "m5_mid_template.log"
+            steps_log = logs / "mid_steps.json"
+            eval_log = logs / "eval.json"
+            cmd = [
+                sys.executable,
+                str(script),
+                "--domain",
+                str(domain),
+                "--device-id",
+                device_id,
+                "--run-id",
+                run_id,
+                "--steps-log",
+                str(steps_log),
+            ]
+            if profile == "m5_pickplace":
+                cmd.extend(["--eval-log", str(eval_log)])
+            tmpl = pack.profile_path(profile) if pack is not None else None
+            if tmpl is not None:
+                cmd.extend(["--template", str(tmpl)])
+            if pack is not None:
+                cmd.extend(["--scene-yaml", str(pack.scene_yaml)])
+            pass_token = '"success": true'
+            timeout_s = {
+                "m5_approach_target": 300,
+                "m5_pickplace": 420,
+            }.get(profile, 180)
 
         if not script.is_file():
             if launched and not keep_launch:
@@ -370,7 +469,7 @@ class CtrlSimLauncher:
             "run_type": "ctrl_sim",
             "device_id": device_id,
             "device_ids": [device_id],
-            "scene_id": scene_id or DEFAULT_SCENE,
+            "scene_id": sid,
             "backend": backend,
             "ros_domain_id": domain,
             "profile": profile,
@@ -384,7 +483,12 @@ class CtrlSimLauncher:
             "run_context_echo": ctx_snap,
             "bringup_launch": bringup_cmd,
         }
-        if profile == "m5_template":
+        if pack is not None:
+            manifest["task_pack"] = pack.summary()
+            manifest["task_pack"]["scene_yaml_snapshot"] = "logs/scene.yaml"
+        elif pack_warn:
+            manifest["task_pack_warn"] = pack_warn
+        if profile in mid_profiles:
             steps_path = logs / "mid_steps.json"
             mid_summary = None
             if steps_path.is_file():
@@ -392,14 +496,53 @@ class CtrlSimLauncher:
                     mid_summary = json.loads(steps_path.read_text(encoding="utf-8"))
                 except json.JSONDecodeError:
                     mid_summary = None
+            tmpl_rel = (
+                str(pack.profile_path(profile).relative_to(pack.root))
+                if pack is not None and pack.profile_path(profile) is not None
+                else "templates/m5_approach_retreat.yaml"
+            )
             manifest["mid"] = {
-                "template": "templates/m5_approach_retreat.yaml",
+                "template": tmpl_rel,
                 "steps_log": "logs/mid_steps.json",
                 "skill_mode": "task_space",
+                "scene_yaml": (mid_summary or {}).get("scene_yaml"),
+                "oracle_gt": (mid_summary or {}).get("oracle_gt"),
                 "num_steps_done": (mid_summary or {}).get("num_steps_done"),
                 "steps": (mid_summary or {}).get("steps"),
                 "success": (mid_summary or {}).get("success"),
             }
+            if (logs / "eval.json").is_file():
+                try:
+                    eval_doc = json.loads((logs / "eval.json").read_text(encoding="utf-8"))
+                except json.JSONDecodeError:
+                    eval_doc = None
+                manifest["eval"] = {
+                    "path": "logs/eval.json",
+                    "success": (eval_doc or {}).get("success"),
+                    "predicates": (eval_doc or {}).get("predicates"),
+                }
+                if profile == "m5_pickplace" and eval_doc is not None:
+                    # 抓放以 eval 为 run 成功依据之一（mid JSON 已对齐）
+                    pass
+        if profile in policy_profiles:
+            steps_path = logs / "policy_steps.json"
+            pol_summary = None
+            if steps_path.is_file():
+                try:
+                    pol_summary = json.loads(steps_path.read_text(encoding="utf-8"))
+                except json.JSONDecodeError:
+                    pol_summary = None
+            manifest["policy"] = {
+                "backend": (pol_summary or {}).get("policy_backend"),
+                "checkpoint": (pol_summary or {}).get("checkpoint"),
+                "policy_id": self.policy_id,
+                "steps_log": "logs/policy_steps.json",
+                "n_pub": (pol_summary or {}).get("n_pub"),
+                "n_hold": (pol_summary or {}).get("n_hold"),
+                "success": (pol_summary or {}).get("success"),
+            }
+            if self.policy_id:
+                manifest["policy_id"] = self.policy_id
         if record and record_stats is not None:
             rel_jsonl = "logs/low.jsonl"
             manifest["tracks"] = {
@@ -434,7 +577,7 @@ class CtrlSimLauncher:
                     "backend": backend,
                     "ros_domain_id": domain,
                     "isaac_sim_version": isaac_ver,
-                    "scene_id": scene_id or DEFAULT_SCENE,
+                    "scene_id": sid,
                     "profile": profile,
                     "mode": mode,
                     "launched_by_lab": launched,
@@ -449,8 +592,12 @@ class CtrlSimLauncher:
         native = run_dir / "native"
         native.mkdir(exist_ok=True)
         shutil.copy2(profile_log, native / profile_log.name)
-        if profile == "m5_template" and (logs / "mid_steps.json").is_file():
+        if profile in mid_profiles and (logs / "mid_steps.json").is_file():
             shutil.copy2(logs / "mid_steps.json", native / "mid_steps.json")
+        if profile in policy_profiles and (logs / "policy_steps.json").is_file():
+            shutil.copy2(logs / "policy_steps.json", native / "policy_steps.json")
+        if (logs / "eval.json").is_file():
+            shutil.copy2(logs / "eval.json", native / "eval.json")
         if record and jsonl_path.is_file():
             shutil.copy2(jsonl_path, native / "low.jsonl")
 
@@ -491,7 +638,10 @@ class CtrlSimLauncher:
                 "low_jsonl": str(jsonl_path) if record else None,
                 "profile": profile,
                 "mid_steps": str(logs / "mid_steps.json")
-                if profile == "m5_template"
+                if profile in mid_profiles
+                else None,
+                "policy_steps": str(logs / "policy_steps.json")
+                if profile in policy_profiles
                 else None,
             },
         )

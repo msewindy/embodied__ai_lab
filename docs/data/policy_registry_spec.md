@@ -1,171 +1,182 @@
-# PolicyArtifact 与策略注册规范 v1.0
+# Policy / Dataset 注册规范 v1.2
 
 | 属性 | 内容 |
 |------|------|
 | **文档编号** | TECH-12 |
-| **版本** | v1.1 |
+| **版本** | v1.2 |
+| **日期** | 2026-08-07 |
 | **维护人** | R2 |
-| **依据** | TECH-09 v1.0-approved §5.5、§8.8 |
+| **依据** | TECH-09 · [PLAN-STRUCT-01](../plan/lab_strategy_runtime_structure_v0.md) §5.4 / P5 · [TECH-05](./run_id_spec.md) |
+| **实现** | `lab_platform/artifacts/hub.py`（`ArtifactHub`）· CLI：`lab data export` / `lab policy train` |
 
 ---
 
-## 一、 PolicyArtifact 组成
+## 0. 两种形态（必读）
+
+| 形态 | 状态 | 说明 |
+|------|------|------|
+| **A. CTRL-SIM MVP（当前）** | **已落地** | `lerobot_state` numpy MLP；`policy.npz`；dataset=`ds_*`；默认 Index 注册 |
+| **B. 目标态（Isaac train / 真机 deploy）** | 设计保留 | `checkpoints/best.pt`、promote API、onboard 加载——见 §五 |
+
+下文 **§一–§四以 A 为准**；§五保留 B 作为演进契约，不覆盖 MVP。
+
+---
+
+## 一、 DatasetArtifact（MVP）
+
+### 1.1 ID
+
+`ds_<source_run_id>`（`-` → `_`），由 `make_dataset_id` 生成；overwrite 后 **upsert**。
+
+### 1.2 落盘
 
 ```text
-artifacts/policies/{policy_id}/
-├── policy_manifest.yaml      # 契约核心（本规范）
-├── checkpoints/
-│   ├── best.pt               # 或 best.onnx
-│   └── last.pt
-├── metrics_summary.json      # 训练/eval 摘要
-└── producer_run.json         # {"isaac_job_id": "...", "kind": "train"}
+<data-root>/datasets/lerobot_v3/<run_id>/
+├── meta/
+│   ├── info.json
+│   ├── lab_source.json      # dataset_id + source_run_id
+│   ├── lab_dataset.json     # Index 旁路镜像（注册时写）
+│   └── ...
+└── data/chunk-000/file-000.parquet
 ```
 
-checkpoint **不经 ROS2 传输**；ws-02 → ws-01/onboard 文件同步后，deploy 节点本地加载。
+### 1.3 注册
+
+`lab data export --format lerobot-v3` **默认注册**（`--no-register` 退出）：
+
+1. 写源 run `manifest.tracks.B.dataset_id`
+2. `IndexService.upsert_artifact(type=dataset)`
+3. `link_run_artifact(source_run, ds_*, downstream)`
+
+解析：`ArtifactHub.resolve_dataset_root(path | ds_*)`。
 
 ---
 
-## 二、 policy_manifest.yaml 字段
+## 二、 PolicyArtifact（MVP · lerobot_state）
+
+### 2.1 目录
+
+```text
+<data-root>/artifacts/policies/{policy_id}/
+├── policy.npz                 # 权重（当前唯一必需 checkpoint）
+├── policy.meta.json           # 训练 meta 旁路
+├── train_meta.json
+├── hub_meta.json              # 注册摘要
+└── policy_manifest.yaml       # 契约核心（见下）
+```
+
+示例 id：`pol_state_p4_mvp` 或 `pol_{YYYYMMDD_HHMMSS}_{slug}`。
+
+### 2.2 policy_manifest.yaml（MVP 最小集）
 
 ```yaml
-policy_id: pol_20260610_velocity_go2_v1
-lifecycle_status: candidate       # draft | candidate | production | deprecated
-
-# 血缘
-source_isaac_job_id: isaac_20260610_143000_p2_train
-git_commit: a1b2c3d4e5f6
-created_at: "2026-06-10T15:00:00+08:00"
-owner: p2
-project_id: lab-default
-
-# 任务语义
-task_id: velocity_rough_go2
-task_domain: locomotion           # manipulation | locomotion | navigation | loco_manipulation
-eval_protocol_id: loco_vel_v1     # sim/real 共用
-
-# 模型文件
+policy_id: pol_state_p4_mvp
+lifecycle_status: draft          # draft | candidate | production | deprecated
+backend: lerobot_state
 checkpoint:
-  path: checkpoints/best.pt
-  format: torchscript               # pt | torchscript | onnx
-  sha256: "..."
-
-# Sim↔Real 接口对齐（语义级，Topic 见 ros2_interface_v1）
-observation_schema:
-  version: "1.0"
-  fields:
-    - name: base_lin_vel
-      shape: [3]
-      dtype: float32
-      source: /perception/robot_state
-    - name: joint_pos
-      shape: [12]
-      dtype: float32
-      source: /perception/joint_states
-
-action_schema:
-  version: "1.0"
-  fields:
-    - name: joint_target_pos
-      shape: [12]
-      dtype: float32
-      target: /skill/intent
-
-# onboard 加载
-onboard_runtime:
-  engine: onnx                    # onnx | torchscript | native_pt
-  node: policy_runner_low
-  max_inference_hz: 100
-
-# 兼容设备
-supported_devices: [quadruped-01]   # 或 ["*"] 实验室通用（需 CR 批准）
-
-# 部署约束
-deploy_constraints:
-  max_speed_cap: 1.0              # 不得超过 device max_speed_cap
-  min_bridge_level: L3
-  requires_calibrations: [imu, joint_zero]
-
-# 指标摘要（来自 train/eval）
-metrics:
-  sim_eval_success_rate: 0.92
-  source_eval_artifact_id: eval_20260610_loco_vel_v1_001
+  path: policy.npz
+  format: lab_numpy_mlp_v0
+source_dataset_ids:
+  - ds_cs_20260806_174016_p2_franka_01
+created_at: "2026-08-07T00:00:00+08:00"
+supported_devices: [franka-01]
+task_domain: manipulation
 ```
+
+### 2.3 注册与解析
+
+`lab policy train …` **默认注册**（`--no-register` 退出）：
+
+1. 规范拷贝到 `artifacts/policies/<policy_id>/`
+2. upsert `type=policy`；metadata 含 `source_dataset_ids`
+3. 链到各源 dataset 的 producer run（downstream）
+
+解析：`ArtifactHub.resolve_policy_checkpoint(path | policy_id)` → `policy.npz`。
+
+Rollout：
+
+```bash
+lab policy rollout --checkpoint pol_state_p4_mvp
+# 或
+lab ctrl-sim run --profile m5_policy_rollout --checkpoint pol_state_p4_mvp
+```
+
+成功后 rollout run manifest 写 `policy.policy_id`；Index：`link_run_artifact(rollout_run, pol_*, upstream)`。
+
+### 2.4 观测 / 动作（与 Task Pack 对齐）
+
+| 侧 | 内容 |
+|----|------|
+| observation | `q[7] + gripper_width` → `observation.state` `[8]` |
+| action | `ee_delta[6] + gripper` → `action` `[7]` |
+
+字段映射见 [DATA-MAP-01](./low_jsonl_to_lerobot_v3.md)。
 
 ---
 
-## 三、 lifecycle 状态机
+## 三、 lifecycle（共用）
 
 ```mermaid
 stateDiagram-v2
-    [*] --> draft: isaac_job(train) 产出
-    draft --> candidate: isaac_job(eval) 达标
-    candidate --> production: real_eval 达标
-    candidate --> draft: sim eval 未达标 / 重训
+    [*] --> draft: train / export 注册
+    draft --> candidate: eval 达标（后置）
+    candidate --> production: real_eval 达标（后置）
     production --> deprecated: 新版本取代
-    deprecated --> [*]
 ```
 
-| 状态 | 允许操作 |
+| 状态 | MVP 现状 |
 |------|----------|
-| **draft** | `isaac_job(play/eval)`；不可 `real_deploy` |
-| **candidate** | + `real_deploy`（低速 smoke）；不可正式 `real_eval` 对外 |
-| **production** | 全速 `real_eval`、对外汇报 |
-| **deprecated** | 只读；PreFlight PF-13 拒绝新 deploy |
+| **draft** | 训练默认；可 CTRL-SIM rollout |
+| **candidate / production** | promote CLI **未实现**；真机前再开 |
+| **deprecated** | 只读约定；PreFlight 拒新 deploy（真机期） |
 
-**晋升 API**（IndexService / 脚本）：
+---
+
+## 四、 CLI 速查
+
+```bash
+lab --data-root <root> data export --run-id <cs_…> --format lerobot-v3
+lab --data-root <root> policy train --dataset ds_… --policy-id pol_…
+lab --data-root <root> list --artifacts
+lab --data-root <root> lineage <run_id>
+```
+
+---
+
+## 五、 目标态（历史设计 · Isaac / 真机 · 不覆盖 MVP）
+
+> 以下为 TECH-09 原契约，供 Pipeline A train / onboard deploy 演进；**当前 CTRL-SIM 不强制此布局。**
+
+```text
+artifacts/policies/{policy_id}/
+├── policy_manifest.yaml
+├── checkpoints/
+│   ├── best.pt
+│   └── last.pt
+├── metrics_summary.json
+└── producer_run.json
+```
+
+目标态 manifest 可含 `observation_schema` / `action_schema` / `onboard_runtime` / `deploy_constraints`（Go2 locomotion 示例见 git 历史 v1.1）。
+
+晋升 API（**未实现**）：
 
 ```bash
 lab policy promote --id pol_xxx --to candidate --eval eval_xxx
-lab policy promote --id pol_xxx --to production --eval eval_yyy
 lab policy deprecate --id pol_xxx --successor pol_yyy
 ```
 
----
-
-## 四、 自动注册（isaac_job train 结束）
-
-`isaac_job_adapter` 扫描 native 输出目录，若发现 checkpoint：
-
-1. 生成 `policy_id`
-2. 从 train config + task_manifest 填充 manifest 基础字段
-3. 设置 `lifecycle_status: draft`
-4. 写入 ArtifactRegistry + 关联 `isaac_job_id`
-
-eval 结束后若 metrics 达阈值（`eval_protocol` 定义），可自动 promote → `candidate`。
+`isaac_job(train)` 结束自动注册仍属目标态；现由 `lab policy train` + ArtifactHub 承担 MVP。
 
 ---
 
-## 五、 real_deploy 加载流程
+## 六、 变更记录
 
-```
-1. PreFlight PF-12/13 校验 manifest
-2. 文件同步 checkpoint 至 onboard 缓存目录
-3. F6C policy_runner_low 按 onboard_runtime 加载
-4. F6B 按 observation_schema 订阅 Perception Topic
-5. action_schema 编码为 SkillIntent 发布
-```
+| 版本 | 日期 | 说明 |
+|------|------|------|
+| v1.0 / v1.1 | 2026-06 / 07 | Go2 / Isaac train 目标契约 |
+| **v1.2** | **2026-08-07** | 对齐 ArtifactHub MVP；目标态降为 §五 |
 
 ---
 
-## 六、 metrics_summary.json
-
-```json
-{
-  "policy_id": "pol_20260610_velocity_go2_v1",
-  "train": {
-    "isaac_job_id": "isaac_20260610_143000_p2_train",
-    "final_reward": 842.1,
-    "iterations": 5000
-  },
-  "sim_eval": {
-    "eval_artifact_id": "eval_20260610_loco_vel_v1_001",
-    "success_rate": 0.92,
-    "episodes": 100
-  },
-  "real_eval": null
-}
-```
-
----
-
-*TECH-12 | policy_registry_spec v1.0*
+*TECH-12 | policy_registry_spec v1.2*

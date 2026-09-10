@@ -1,6 +1,8 @@
 # embodied_lab ROS2 工作区
 
-Ubuntu 24.04 + ROS2 Jazzy：Go2 栈 + FR3 CTRL-SIM（DOMAIN 43）适配。
+Ubuntu 24.04 + ROS2 Jazzy：Go2 栈 + FR3 CTRL-SIM（DOMAIN **43**）适配。
+
+**日常开跑请优先用 Lab OS：** [SOP](../docs/infra/sop_franka_ctrl_sim_v0.md)（`lab ctrl-sim run` 可自动 launch）。下文为底层包与手搓 launch 说明。
 
 ## 包清单
 

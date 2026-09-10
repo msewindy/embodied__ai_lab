@@ -211,15 +211,134 @@ class DefaultPreFlightGate(PreFlightGate):
                     items.append(PreFlightItem("PF-02", "pass", device_id))
 
         profile = request.job_kind or "m2_hello"
-        if profile not in ("m2_hello", "m5_template"):
+        mid_profiles = ("m5_template", "m5_approach_target", "m5_pickplace")
+        policy_profiles = ("m5_policy_rollout",)
+        if profile not in ("m2_hello",) + mid_profiles + policy_profiles:
             items.append(PreFlightItem("PF-CS-02", "fail", f"unsupported profile: {profile}"))
         else:
             items.append(PreFlightItem("PF-CS-02", "pass", profile))
 
-        if not request.scene_id:
-            items.append(PreFlightItem("PF-CS-03", "warn", "scene_id empty; will use min default"))
+        from lab_platform.ctrl_sim.task_pack import (
+            LEGACY_SCENE_IDS,
+            TaskPackError,
+            find_pack_dir,
+            load_task_pack,
+        )
+
+        sid = request.scene_id or ""
+        # 抓放 / 朝目标 / 策略 rollout 正式 profile 禁止仅靠 legacy 标签
+        requires_pack = profile in (
+            "m5_approach_target",
+            "m5_pickplace",
+            "m5_policy_rollout",
+        )
+        if not sid:
+            items.append(
+                PreFlightItem(
+                    "PF-CS-03",
+                    "fail",
+                    "scene_id required (use tabletop_pickplace_v0)",
+                )
+            )
+        elif sid in LEGACY_SCENE_IDS and find_pack_dir(sid, self._config.data_root) is None:
+            if requires_pack:
+                items.append(
+                    PreFlightItem(
+                        "PF-CS-03",
+                        "fail",
+                        f"profile={profile} requires Task Pack; "
+                        f"legacy scene_id={sid} is tag-only "
+                        "(use --scene tabletop_pickplace_v0)",
+                    )
+                )
+            else:
+                items.append(
+                    PreFlightItem(
+                        "PF-CS-03",
+                        "warn",
+                        f"legacy scene_id={sid} (no Task Pack; tag-only)",
+                    )
+                )
         else:
-            items.append(PreFlightItem("PF-CS-03", "pass", request.scene_id))
+            try:
+                pack = load_task_pack(sid, self._config.data_root)
+                items.append(
+                    PreFlightItem(
+                        "PF-CS-03",
+                        "pass",
+                        f"{sid} @ {pack.root}",
+                    )
+                )
+                # 正式 Task Pack：scene_pin + 数据契约字段必填
+                if pack.pin_md is None:
+                    items.append(
+                        PreFlightItem(
+                            "PF-CS-04",
+                            "fail",
+                            "scene_pin.md required in Task Pack",
+                        )
+                    )
+                else:
+                    items.append(PreFlightItem("PF-CS-04", "pass", "scene_pin.md"))
+
+                schema = pack.scene.get("action_schema")
+                cameras = pack.scene.get("cameras")
+                if not isinstance(schema, dict) or not schema.get("type"):
+                    items.append(
+                        PreFlightItem(
+                            "PF-CS-06",
+                            "fail",
+                            "scene.yaml action_schema.type required (B-track map)",
+                        )
+                    )
+                elif not isinstance(cameras, list):
+                    items.append(
+                        PreFlightItem(
+                            "PF-CS-06",
+                            "fail",
+                            "scene.yaml cameras must be a list (may be empty)",
+                        )
+                    )
+                else:
+                    items.append(
+                        PreFlightItem(
+                            "PF-CS-06",
+                            "pass",
+                            f"action_schema={schema.get('type')} cameras={len(cameras)}",
+                        )
+                    )
+
+                if profile in mid_profiles + policy_profiles:
+                    pp = pack.profile_path(profile)
+                    if pp is None:
+                        items.append(
+                            PreFlightItem(
+                                "PF-CS-05",
+                                "fail",
+                                f"profile YAML missing for {profile} "
+                                f"(expected profiles/{profile}.yaml)",
+                            )
+                        )
+                    else:
+                        items.append(
+                            PreFlightItem("PF-CS-05", "pass", str(pp.name))
+                        )
+                        if profile in policy_profiles:
+                            import yaml
+
+                            raw = yaml.safe_load(pp.read_text(encoding="utf-8")) or {}
+                            ck = raw.get("checkpoint")
+                            items.append(
+                                PreFlightItem(
+                                    "PF-CS-07",
+                                    "pass" if ck else "warn",
+                                    f"checkpoint={ck}"
+                                    if ck
+                                    else "checkpoint unset (use --checkpoint)",
+                                )
+                            )
+            except TaskPackError as e:
+                items.append(PreFlightItem("PF-CS-03", "fail", str(e)))
         return items
 
     def _check_gap(self, request: RunCreateRequest) -> list[PreFlightItem]:

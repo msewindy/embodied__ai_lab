@@ -3,10 +3,10 @@
 | 属性 | 内容 |
 |------|------|
 | **文档编号** | GOV-INDEX-01 |
-| **版本** | v2.5 |
-| **日期** | 2026-08-03 |
+| **版本** | v2.11 |
+| **日期** | 2026-08-14 |
 | **维护人** | R1 |
-| **说明** | 仓库**唯一文档导航**；新增/废止文档须同步更新本表 |
+| **说明** | 仓库**唯一文档目录**；**入门先读** [docs/README](../README.md) 与 [宪章](../plan/lab_charter_v0.md) |
 
 ---
 
@@ -14,15 +14,21 @@
 
 | 我要… | 打开 |
 |--------|------|
-| 了解实验室建什么 | [实验室运行框架建设总体方案.md](../../实验室运行框架建设总体方案.md)（**L0**） |
-| 报批预算 | [budget_approval_onepager_v1.md](../plan/budget_approval_onepager_v1.md) → [budget_v2_framework.md](../plan/budget_v2_framework.md) |
-| 看排期 | [master_wbs_v1.md](../plan/master_wbs_v1.md) |
-| W1 决策记录 | [plan_review_w1.md](../meeting/plan_review_w1.md) |
-| 写代码/跑验证 | [lab_platform/README.md](../../lab_platform/README.md) · [INFRA-02](../infra/phase1_validation_plan_v1.md) |
-| 平台×世界模型融合 | [platform_wm_fusion_plan_v0.md](../plan/platform_wm_fusion_plan_v0.md) · [external 挂载](../../external/README.md) |
+| **目的圣经（算数 × 时空上下文运行时）** | [PLAN-CHARTER-01](../plan/lab_charter_v0.md) **v1.1** |
+| **怎么读 docs（效力分层）** | [docs/README](../README.md) |
+| **跑 FR3 CTRL-SIM** | [SOP](../infra/sop_franka_ctrl_sim_v0.md) · [E2E PASS](../infra/sop_franka_ctrl_sim_e2e_validation_v0.md) |
+| **看结构（L0×L1×L2）** | [PLAN-STRUCT-01](../plan/lab_strategy_runtime_structure_v0.md) |
+| **看已实现什么** | [TECH-14 As-Built](../architecture/platform_architecture_as_built_v1.md) |
+| **真机 FR3（暂缓）** | [PHASE2-FR3-REAL](../infra/phase2_franka_real_e2e_plan_v0.md) |
+| 了解建设总纲（16 周/预算） | [实验室运行框架建设总体方案.md](../../实验室运行框架建设总体方案.md)（**L0 建设方案**，与运行时宪章分工：方案管建设期，宪章管产品目的） |
+| 报批预算 | [budget_approval_onepager_v1.md](../plan/budget_approval_onepager_v1.md) |
 | 招人 | [docs/org/jd/](./jd/) |
 
-**状态图例：** `approved` 已生效 · `R1-approved` 负责人已确认、待现场/到岗复核 · `draft` 草案 · `superseded` 已废止
+**冲突：** 目的听 [宪章](../plan/lab_charter_v0.md)；结构听 [STRUCT](../plan/lab_strategy_runtime_structure_v0.md)；进度听 [INFRA-02 §1](../infra/phase1_validation_plan_v1.md)。`research/` 永不覆盖上述三者。
+
+**状态图例：** `approved` 已生效 · `R1-approved` 负责人已确认、待现场/到岗复核 · `draft` 草案 · `working-baseline` 工作基线 · `superseded` 已废止 · `historical` 骨架期保留、冲突作废
+
+---
 
 ---
 
@@ -30,13 +36,16 @@
 
 | 编号 | 文档 | 路径 | 状态 |
 |------|------|------|------|
-| L0 | 实验室运行框架建设总体方案 | `实验室运行框架建设总体方案.md` | **v1.1 approved**（2026-07-09 角色/预算统一） |
+| PLAN-CHARTER-01 | **实验室平台宪章（目的圣经）** | `docs/plan/lab_charter_v0.md` | **v1.1 working-baseline** · 效力最高 · 灵魂=L1 时空上下文 |
+| L0 | 实验室运行框架建设总体方案 | `实验室运行框架建设总体方案.md` | **v1.1 approved**（建设期总纲；目的以宪章为准） |
 | PLAN-DOC-UNIFY-01 | **文档体系统一方案** | `docs/plan/document_unification_plan_v1.md` | v1.4 · **全部完成** |
 | PLAN-WBS-01 | 16 周建设 WBS | `docs/plan/master_wbs_v1.md` | R1-approved |
 | PLAN-BUDGET-02 | **框架预算 v2（工业导向）** | `docs/plan/budget_v2_framework.md` | **R1-approved · 待上级批** |
 | PLAN-BUDGET-02-1P | 预算报批一页纸 | `docs/plan/budget_approval_onepager_v1.md` | R1-approved · 待上级批 |
 | PLAN-BUDGET-01 | ~~预算草案 v1~~ | `docs/plan/budget_draft_v1.md` | **superseded** → 见 v2 |
-| PLAN-FUSION-01 | **平台 × 世界模型控制运行时融合规划** | `docs/plan/platform_wm_fusion_plan_v0.md` | **v0.3 working-baseline** · 双模式 ROS2 |
+| PLAN-FUSION-01 | 平台 × 世界模型融合规划 | `docs/plan/platform_wm_fusion_plan_v0.md` | v0.4.3 · **服从宪章/STRUCT**（双模式仍有效） |
+| PLAN-STRUCT-01 | **L0×L1×L2 结构设计（结构 SSOT）** | `docs/plan/lab_strategy_runtime_structure_v0.md` | **v0.3.3** · 服从宪章 v1.1 |
+| PLAN-SR-B-01 | 学能力 B（相机/ACT）切片草案 | `docs/plan/strategy_runtime_b_vision_act_plan_v0.md` | **暂停** · 服从宪章；B0 非前置 |
 | — | 世界模型资料（本地 Junction，不进 Git） | `external/world_model/` ← 见 `external/README.md` | 本机挂载 · **禁止 Submodule** |
 
 ---
@@ -45,12 +54,12 @@
 
 | 编号 | 制度/规范 | 路径 | 状态 |
 |------|-----------|------|------|
-| GOV-INDEX-01 | 本索引 | `docs/org/governance_index_v1.md` | v2.0 |
+| GOV-INDEX-01 | 本索引 | `docs/org/governance_index_v1.md` | v2.10 |
 | GOV-01 | RACI 职责矩阵 | `docs/org/raci_v1.md` | **v1.1 approved** |
 | GOV-04 | 实验流程规范 | `docs/process/experiment_workflow_v1.md` | **v1.1 R1-approved** |
 | GOV-05 | 变更控制规范 | `docs/process/change_control_v1.md` | **v1.1 R1-approved** |
 | GOV-06 | 例会机制 | `docs/process/meeting_policy_v1.md` | **v1.1 R1-approved** |
-| GOV-07 | 文档管理规范 | `docs/process/document_management_v1.md` | **v1.1 R1-approved** |
+| GOV-07 | 文档管理规范 | `docs/process/document_management_v1.md` | **v1.3** · 效力分层；圣经=宪章 v1.1 |
 | MTG-W1 | W1 方案评审纪要 | `docs/meeting/plan_review_w1.md` | R1-signed · 2026-07-09 |
 
 ---
@@ -59,22 +68,27 @@
 
 | 编号 | 规范 | 路径 | 状态 |
 |------|------|------|------|
-| TECH-01 | 系统整体架构设计 | `docs/architecture/blueprint_v0.md` | **v1.1 R1-approved** |
+| TECH-01 | 系统整体架构设计 | `docs/architecture/blueprint_v0.md` | v1.1 · **historical**（骨架期） |
 | TECH-02 | 统一消息接口 (ROS2) | `docs/software/ros2_interface_v1.md` | **v1.3** · DOMAIN 42/43 · CTRL-SIM |
 | TECH-03 | 算力与网络规划 | `docs/infra/infra_plan_draft_v0.md` | R1-approved |
 | TECH-04 | 软件版本矩阵 | `docs/software/version_matrix_v1.md` | **v1.3** · 双模式 · DOMAIN 钉扎 |
-| TECH-05 | run_id 规范 | `docs/data/run_id_spec.md` | v1.1 |
-| TECH-06 | 平台软件架构（功能拓扑） | `docs/architecture/platform_architecture_v1.md` | v1.1 |
+| TECH-05 | run_id / Artifact 规范 | `docs/data/run_id_spec.md` | **v1.2** · 含 `ctrl_sim` / `ds_*` |
+| TECH-06 | 平台软件架构（功能拓扑） | `docs/architecture/platform_architecture_v1.md` | v1.1 · **historical** |
 | TECH-07 | 设备清单与外设调研 | `docs/device/embodied_hardware_survey_v1.md` | **v1.1 R1-approved** · Pilot 池选型 |
-| TECH-08 | 平台详细设计（功能） | `docs/architecture/platform_detailed_design_v1.md` | **v1.1** |
-| TECH-09 | 平台详细技术架构 | `docs/architecture/platform_technical_architecture_v1.md` | **v1.2** · ws-02 双模式 |
+| TECH-08 | 平台详细设计（功能） | `docs/architecture/platform_detailed_design_v1.md` | v1.1 · **historical** |
+| TECH-09 | 平台详细技术架构 | `docs/architecture/platform_technical_architecture_v1.md` | v1.2 · 双模式仍有效；结构以 STRUCT 为准 |
 | TECH-10 | PreFlight 门禁 | `docs/software/preflight_checklist_spec.md` | v1.1 |
 | TECH-11 | 设备能力矩阵 | `docs/device/device_capability_matrix_v1.md` | v1.1 |
-| TECH-12 | Policy 注册规范 | `docs/data/policy_registry_spec.md` | v1.1 |
+| TECH-12 | Policy / Dataset 注册规范 | `docs/data/policy_registry_spec.md` | **v1.2** · ArtifactHub MVP + 目标态 |
 | TECH-13 | Isaac Job 适配器 | `docs/software/isaac_job_adapter_v1.md` | v1.1 |
-| TECH-14 | 平台 As-Built | `docs/architecture/platform_architecture_as_built_v1.md` | **v1.1** · 评审待签字 |
+| TECH-14 | 平台 As-Built | `docs/architecture/platform_architecture_as_built_v1.md` | **v1.2** · CTRL-SIM / P5 |
+| DATA-MAP-01 | A→B LeRobot v3 字段映射 | `docs/data/low_jsonl_to_lerobot_v3.md` | Phase-1 可执行 |
 | INFRA-01 | 环境安装清单 | `docs/infra/env_setup_checklist_v1.md` | v1.1 |
-| INFRA-02 | Phase 1 验证方案 | `docs/infra/phase1_validation_plan_v1.md` | **v1.3** · CTRL-SIM + M2–M6 详设 |
+| INFRA-02 | Phase 1 验证方案（**进度看板**） | `docs/infra/phase1_validation_plan_v1.md` | **v1.4.6** · M2–M6 + P4/P5 |
+| SOP-CTRL-SIM-01 | Franka CTRL-SIM 操作手册（M6） | `docs/infra/sop_franka_ctrl_sim_v0.md` | **v0** · 入口分流 |
+| SOP-CTRL-SIM-E2E-01 | CTRL-SIM **端到端手动验收**清单 | `docs/infra/sop_franka_ctrl_sim_e2e_validation_v0.md` | **v0.1 PASS** · 2026-08-07 |
+| PHASE2-FR3-REAL-01 | **真机 FR3 E2E 计划** | `docs/infra/phase2_franka_real_e2e_plan_v0.md` | **v0.1 paused** · 仿真优先 |
+| — | **L1 Strategy Runtime 包** | `strategy_runtime/` | **v0.1** · STRUCT §11 |
 | LAYOUT-01 | 场地布局草案 | `docs/layout/layout_draft_v0.md` | draft · **待实测 v1** |
 | LAYOUT-02 | **弱电与配电连接设计** | `docs/layout/electrical_design_v1.md` | **v1.0-draft** · 支撑 BOM §2.1/§2.2 |
 
@@ -91,6 +105,8 @@
 | MDD-05 | Pipeline C 运维 | `docs/modules/pipeline_c_ops_mdd_v1.md` | draft |
 | MDD-06 | Real 栈 F5/F6 | `docs/modules/F6_real_stack_mdd_v1.md` | skeleton |
 | — | Walking Skeleton 设计 | `docs/modules/framework_skeleton_design_v1.md` | v1.0 |
+
+> MDD / Skeleton 为 Walking Skeleton 期文档，标 **historical**。若与 **宪章 / PLAN-STRUCT-01 / INFRA-02** 冲突，**以后者为准**。
 
 ---
 
@@ -131,9 +147,14 @@
 
 ## 八、研究与参考（非建设依据）
 
+见 [docs/research/README.md](../research/README.md)。
+
 | 目录 | 说明 |
 |------|------|
-| `docs/research/humanoid_mani_v_july_blogs/` | 技术调研与论文笔记；**不驱动框架期采购** |
+| `docs/research/` | 调研区说明 |
+| `docs/research/humanoid_mani_v_july_blogs/` | 论文/博客笔记；**不驱动采购** |
+| [RES-OSS-01](../research/oss_framework_survey_v0.md) | 开源框架源码索引 |
+| [RES-L1-REQ-01](../research/l1_framework_requirements_v0.md) | L1 需求推导；**仅 Design 输入**；不得推翻宪章 |
 
 ---
 
@@ -156,7 +177,14 @@
 | **v2.3** | **2026-07-09** | Batch 3 文档统一（TECH-08/09/14、MDD、software/data/device） |
 | **v2.2** | **2026-07-09** | Batch 2 文档统一（INFRA、TECH-05/06、评审纪要 R1–R3） |
 | **v2.1** | **2026-07-09** | Batch 1 文档统一（R1–R5、L0 v1.1、GOV v1.1） |
+| **v2.5** | **2026-08-03** | 挂载 FUSION / 双模式入口 |
+| **v2.6** | **2026-08-07** | Phase-1 主路径四件套；STRUCT/SOP/P5；进度看板钉 INFRA-02 |
+| **v2.7** | **2026-08-07** | M6 E2E PASS；挂载 Phase-2 真机 FR3 计划 |
+| **v2.8** | **2026-08-10** | L1=`strategy_runtime/`；真机计划 paused；仿真加深优先 |
+| **v2.9** | **2026-08-14** | 挂 REQ v0.2 / STRUCT v0.3.1 / FUSION v0.4.3 / PLAN-SR-B 暂停 |
+| **v2.10** | **2026-08-14** | 宪章为目的圣经；docs 按效力阅读；TECH-01/06/08 标 historical |
+| **v2.11** | **2026-08-14** | 宪章升 v1.1：架构史 + 时空上下文（WM-B/A）为正文；不再以反 LeRobot 为全文中心 |
 
 ---
 
-*GOV-INDEX-01 v2.0 | 文档唯一导航*
+*GOV-INDEX-01 v2.11 | 文档目录（入门见 docs/README + 宪章）*

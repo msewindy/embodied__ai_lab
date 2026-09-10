@@ -23,6 +23,7 @@ def init_workspace(config: LabConfig) -> None:
         config.artifacts_dir / "evals",
         config.artifacts_dir / "calibrations",
         config.artifacts_dir / "scenes",
+        config.data_root / "datasets" / "lerobot_v3",
         config.registry_dir / "eval_protocols",
         config.tasks_dir,
         config.data_root / "vendor",

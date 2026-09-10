@@ -39,12 +39,15 @@ ros2 launch franka_sim_bridge franka_sim_bridge.launch.py \
 
 ## 真机（Phase-2）
 
-改用官方：
+计划 SSOT：[`docs/infra/phase2_franka_real_e2e_plan_v0.md`](../../docs/infra/phase2_franka_real_e2e_plan_v0.md)（DOMAIN **42**）。
+
+官方栈（R0）：
 
 ```bash
+export ROS_DOMAIN_ID=42
 ros2 launch franka_bringup franka.launch.py robot_type:=fr3 robot_ip:=<fci-ip>
 # 笛卡尔示例：
 ros2 launch franka_bringup example.launch.py controller_names:=cartesian_impedance_example_controller
 ```
 
-届时另建 `franka_driver_bridge`，语义仍走同一套 TECH-02 msg。
+本仓另建 `franka_driver_bridge`（R1），语义仍走同一套 TECH-02 msg；**禁止**用本仿真包直接控真机。

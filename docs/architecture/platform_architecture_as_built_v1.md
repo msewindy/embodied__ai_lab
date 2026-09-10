@@ -1,16 +1,16 @@
-# 平台架构 As-Built 说明 v1.1（Walking Skeleton 评审版）
+# 平台架构 As-Built 说明 v1.2
 
 | 属性 | 内容 |
 |------|------|
 | **文档编号** | TECH-14 |
-| **版本** | v1.1 |
-| **日期** | 2026-06-10 |
+| **版本** | v1.2 |
+| **日期** | 2026-08-07 |
 | **维护人** | R2 |
-| **用途** | 团队评审：**设计（TECH-09） vs 当前已实现（lab_platform）** |
-| **设计基线** | [TECH-09 platform_technical_architecture_v1.md](./platform_technical_architecture_v1.md) v1.1 |
-| **依据** | [governance_index_v1.md](../org/governance_index_v1.md) · [plan_review_w1.md](../meeting/plan_review_w1.md) |
-| **实现基线** | `lab_platform/` · [framework_skeleton_design_v1.md](../modules/framework_skeleton_design_v1.md) |
-| **验证命令** | `cd lab_platform && pip install -e . && lab init && lab demo full` |
+| **用途** | **设计（TECH-09） vs 当前已实现**；Phase-1 主路径已从纯 Stub 演进到 CTRL-SIM |
+| **设计基线** | [TECH-09](./platform_technical_architecture_v1.md) · [PLAN-STRUCT-01](../plan/lab_strategy_runtime_structure_v0.md) |
+| **进度** | [INFRA-02 §1](../infra/phase1_validation_plan_v1.md) |
+| **实现基线** | `lab_platform/` · `ros2/franka_sim_bridge` · `tasks/tabletop_pickplace_v0` |
+| **验证** | Skeleton：`lab demo full`；主路径：见 [SOP](../infra/sop_franka_ctrl_sim_v0.md) |
 
 ---
 
@@ -19,19 +19,47 @@
 | 文档 | 回答的问题 |
 |------|------------|
 | **TECH-09** | 平台**应该怎么建**（目标架构、模块职责、Pipeline、LabOps） |
-| **本文档 (As-Built)** | 平台**已经建了什么**（代码包结构、真实/Stub 边界、模块映射） |
+| **PLAN-STRUCT-01** | L0×L1×L2 **如何叠放**（结构 SSOT） |
+| **本文档 (As-Built)** | 平台**已经建了什么**（真实/Stub 边界、CTRL-SIM 栈） |
 | **TECH-05/10/11/12/13** | 字段级契约（Run ID、PreFlight、Policy、Isaac 入口） |
-| **MDD 系列** | 各模块进入详细设计与编码的输入 |
+| **MDD 系列** | 模块详设；与 STRUCT/INFRA 冲突时**以后者为准** |
 
-**评审目标**：
-1. 确认 Walking Skeleton 与 TECH-09 **模块边界一致**。
-2. 确认 **三条 Pipeline + LabOps 横切** 已在代码中可跑通。
-3. 确认 **Stub 替换清单** 可作为团队并行开发分工依据。
-4. 确认 **缺口清单** 有明确优先级与负责人。
+**v1.2 增量**：§1.1 CTRL-SIM / 双轨 / PolicyBackend / ArtifactHub（相对 v1.1 Walking Skeleton 评审版）。
+
+### 1.1 Phase-1 已实现栈（2026-08）
+
+```text
+L0 lab_platform
+  RunManager · PreFlight(CTRL-SIM) · Index · ArtifactHub
+  ctrl_sim/  launcher · recorder · export · policy_train/rollout
+  CLI: lab ctrl-sim | data export | policy train|rollout | list | lineage
+
+L1（薄 · 进程内 / 脚本）
+  Mid profiles: m5_template · m5_approach_target · m5_pickplace
+  PolicyBackend: lerobot_state (numpy MLP) · template/oracle 脚本
+
+L2 Task Pack
+  tasks/tabletop_pickplace_v0/  (scene.yaml · USD · assemble · eval 谓词)
+
+ROS2（DOMAIN 43）
+  franka_sim_bridge · embodied_lab_msgs · franka_ctrl_sim.launch
+```
+
+| 能力 | 状态 | 入口 |
+|------|------|------|
+| CTRL-SIM Hello / Mid / 抓放 | ✅ | `lab ctrl-sim run --profile …` |
+| A 轨录制 / 回放 | ✅ | 默认录制；`ctrl-sim replay` |
+| B 轨 LeRobot v3 | ✅ | `lab data export --format lerobot-v3` |
+| state MLP 训 / rollout | ✅ | `lab policy train` / `rollout` |
+| Index dataset/policy | ✅ | 默认注册；`list --artifacts` |
+| SOP 入口分流 | ✅ 文档 | `sop_franka_ctrl_sim_v0.md` |
+| 真机 / ACT / 视觉 | 后置 | — |
+| Pipeline A 真 Isaac train | Stub / 后置 | `StubIsaacLauncher` |
+| Pipeline B 真机 Real 栈 | Stub / 后置 | `StubRealRuntime`（CTRL-SIM 用 Hybrid+真 ROS） |
 
 ---
 
-## 二、 总体 As-Built 架构
+## 二、 总体 As-Built 架构（Walking Skeleton 基线）
 
 ### 2.1 设计 vs 实现 对照
 
@@ -71,9 +99,9 @@ TECH-09 要求三节点（ws-02 / ws-01 / onboard）；当前骨架在**单机�
 
 | 节点 | TECH-09 职责 | As-Built 现状 |
 |------|-------------|---------------|
-| **lab-ws-02** | Isaac、训练、Index、Artifact 文件 | 本地 `data/` + SQLite；StubIsaacLauncher |
-| **lab-ws-01** | RunManager、Rosbag、大脑慢环 | RunManager + StubRos2Bridge（打印 run_context） |
-| **onboard** | 小脑快环、Driver Bridge、Limiter | 合并在 StubRealRuntime 内模拟 |
+| **lab-ws-02** | Isaac、训练、Index、Artifact 文件 | **CTRL-SIM 主跑点**：Isaac 6 + ROS2 DOMAIN **43** + `lab`；`~/embodied-ai-lab-data` |
+| **lab-ws-01** | RunManager、Rosbag、大脑慢环 | 骨架仍可单机模拟；真机期再分 |
+| **onboard** | 小脑快环、Driver Bridge、Limiter | 仿真由 `franka_sim_bridge` 承担；真机后置 |
 
 ```mermaid
 graph TB
@@ -303,6 +331,11 @@ data/                           # lab init 生成（默认 lab_platform/data/）
 | **F7** | ResourceScheduler | device/gpu lock, Z-DYN≤2 | **真实** | `scheduler/locks.py` |
 | **F7** | RosbagRecorder | 写空 .mcap | 占位 | `stubs/real_runtime.py` |
 | **F7** | ArtifactRegistry | policy/demo/eval/cal 注册 | **真实** | `artifacts/registry.py` |
+| **F7** | ArtifactHub | dataset / state-policy（P5） | **真实** | `artifacts/hub.py` |
+| **CTRL-SIM** | Launcher / Recorder / Export | FR3 同构 run | **真实** | `ctrl_sim/` |
+| **CTRL-SIM** | Policy train/rollout | lerobot_state | **真实** | `ctrl_sim/policy_*.py` |
+| **ROS2** | franka_sim_bridge | SkillIntent ↔ Isaac | **真实** | `ros2/franka_sim_bridge` |
+| **L2** | Task Pack | tabletop_pickplace_v0 | **真实** | `tasks/tabletop_pickplace_v0` |
 | **Pipeline A** | isaac 产出收录 | IsaacPipelineHooks | **真实** | `pipelines/pipeline_a.py` |
 | **LabOps** | Device/Bridge | 读 yaml + promote | **真实** | `preflight/gate.py`, `workspace.py` |
 | **LabOps** | Calibration/Scene | PreFlight 校验 + 静态 scene | 部分 | `registry/`, `artifacts/scenes/` |
@@ -318,12 +351,12 @@ data/                           # lab init 生成（默认 lab_platform/data/）
 | `IndexClient` | `IndexService` | 可选 HTTP 远程（ws-01→ws-02） |
 | `PreFlightGate` | `DefaultPreFlightGate` | 补全 PF 检查 + 接 R3 台账 API |
 | `ResourceScheduler` | `DefaultResourceScheduler` | 队列/优先级策略 |
-| `IsaacLauncher` | `StubIsaacLauncher` | Isaac Lab 原生命令（TECH-13） |
-| `RealRuntime` | `StubRealRuntime` | F5/F6 ROS2 栈 |
-| `Ros2Bridge` | `StubRos2Bridge` | `/system/run_context` ROS2 节点 |
+| `IsaacLauncher` | `StubIsaacLauncher` | Isaac Lab 原生命令（TECH-13）；批训练 BATCH |
+| `RealRuntime` | Stub **或** Hybrid（CTRL-SIM） | 真机 F5/F6；仿真走 `CtrlSimLauncher` |
+| `Ros2Bridge` | CTRL-SIM：**真** `/system/run_context` | 骨架 demo 仍可用 Stub |
 | `GapAnalyzer` | `StubGapAnalyzer` | F4 真实 gap 脚本 |
 
-**原则**：替换 Stub 实现类，**不修改** `RunManager` 调用顺序与 `protocols.py` 方法签名。
+**原则**：替换 Stub 实现类，**不修改** `RunManager` 调用顺序与 `protocols.py` 方法签名。CTRL-SIM 经 `CtrlSimLauncher` 挂入 RunManager，不破坏该原则。
 
 ---
 
@@ -331,6 +364,7 @@ data/                           # lab init 生成（默认 lab_platform/data/）
 
 | run_type | Pipeline | PreFlight 要点 | 执行入口 | 产出 |
 |----------|----------|----------------|----------|------|
+| **`ctrl_sim`** | CTRL-SIM | scene pin / action_schema / DOMAIN 43 | `CtrlSimLauncher` | A/B 轨、eval、policy steps |
 | `isaac_job` play/train/eval | A | PF-01, PF-08(train), PF-15 | `_run_isaac` → Stub + Hooks | PA / EA |
 | `real_bringup` | C | PF-01, PF-02 | `real.bringup` | bringup_report, L1 |
 | `calibration_session` | C | PF-01–03(L≥1) | `real.calibrate` | CalibrationArtifact |
@@ -355,21 +389,19 @@ Bridge 门槛（As-Built）：`real_eval` 启动要求 **L3**；成功后 Stub �
 
 ---
 
-## 八、 与设计基线的差距（Gap List）
+## 八、 与设计基线的差距（Gap List · 2026-08 重排）
 
-| 优先级 | 缺口 | TECH-09 依据 | 建议负责人 |
-|--------|------|-------------|------------|
-| **P0** | `ros2_interface_v1.md` 重写 | §七 慢/快环 Topic | R2 |
-| **P0** | StubIsaacLauncher → 真 Isaac CLI | §5.2, TECH-13 | R2 |
-| **P1** | StubRealRuntime → F5/F6 ROS2 | §三 F5/F6, §七 | R2 |
-| **P1** | StubRos2Bridge → 真 run_context 节点 | §七 `/system/run_context` | R2 |
-| **P1** | RosbagRecorder 真实 mcap | §三 F7 Rosbag | R2 |
-| **P1** | real_bringup BU-01..06 真实检查 | §8.7, MDD-05 | R2+R3 |
-| **P2** | LabOpsMonitor 磁盘/GPU/延迟 | §8.6 | R2 |
-| **P2** | IndexService HTTP 化（ws-01 调 ws-02） | §2.3, §三 F7 部署 | R2 |
-| **P2** | Config Pin 自动 git commit | §三 横切 Config Pin | R2 |
-| **P2** | ws-02→onboard checkpoint 文件同步 | §2.1 文件同步 | R2 |
-| **P3** | R3 台账与 `device_capabilities` 联动 | §8.10 maintenance_policy | R3 |
+| 优先级 | 缺口 | 说明 | 建议负责人 |
+|--------|------|------|------------|
+| **已消** | CTRL-SIM ROS2 + run_context | M2–M3 已通 | — |
+| **已消** | A/B 轨 + Index dataset/policy | M4 / P3 / P5 | — |
+| **P1** | ACT / 视觉 PolicyBackend | STRUCT 后置；现仅 `lerobot_state` | R2+R5 |
+| **P1** | 真机 Franka Bridge（DOMAIN 42） | 围栏急停前禁止 | R2+R3 |
+| **P1** | StubIsaacLauncher → 真 Isaac CLI（BATCH） | TECH-13；不阻塞 CTRL-SIM | R2 |
+| **P2** | Policy promote candidate/production | TECH-12 目标态 | R2 |
+| **P2** | RosbagRecorder 真实 mcap | 真机期 | R2 |
+| **P2** | LabOpsMonitor / Index HTTP | 多机部署 | R2 |
+| **P3** | 完整 `strategy_runtime` 包 | STRUCT 待决 | R1+R2 |
 
 ---
 
@@ -407,21 +439,17 @@ Bridge 门槛（As-Built）：`real_eval` 启动要求 **L3**；成功后 Stub �
 
 ---
 
-## 十、 推荐实施路线图（评审通过后）
+## 十、 推荐实施路线图
 
 ```text
-Phase 1 · 当前 ✅
-  TECH-09 approved → P0 规范 → Walking Skeleton → 本文档 As-Built v1.0
+Phase 1 · 已完成（INFRA-02 v1.4.6）
+  Skeleton → CTRL-SIM M2–M5 → Scene/pickplace → 双轨 → P4/P5 → M6 SOP 文档
 
-Phase 2 · 并行替换（W2–W4）
-  ① ros2_interface_v1 重写（Real 栈前置）
-  ② StubIsaacLauncher → Isaac Lab（Pipeline A 先真）
-  ③ Pipeline C bringup 真实 BU 检查
-  ④ StubRealRuntime.collect → Teleop（F5）
-  ⑤ StubRealRuntime.deploy/eval → F6 大脑-小脑
+下一波（非阻塞）
+  M6 交叉签字 · rollout 日常回归 · ACT/视觉（可选） · 真机 42（门禁后）
 
-Phase 3 · 生产化（W5+）
-  IndexService HTTP · LabOpsMonitor · 三节点部署 · 首台真机 E2E
+后置
+  Pipeline A 真 train · Real 栈 F5/F6 · 三节点生产化
 ```
 
 ---
@@ -430,22 +458,23 @@ Phase 3 · 生产化（W5+）
 
 | 文档 | 路径 |
 |------|------|
+| 结构 SSOT | `docs/plan/lab_strategy_runtime_structure_v0.md` |
+| 进度看板 | `docs/infra/phase1_validation_plan_v1.md` |
+| 操作 SOP | `docs/infra/sop_franka_ctrl_sim_v0.md` |
 | 目标技术架构 | `docs/architecture/platform_technical_architecture_v1.md` |
-| 功能架构 | `docs/architecture/platform_detailed_design_v1.md` |
-| 骨架设计 | `docs/modules/framework_skeleton_design_v1.md` |
-| Run/Artifact 规范 | `docs/data/run_id_spec.md` |
-| MDD 索引 | `docs/modules/README.md` |
-| 代码 README | `lab_platform/README.md` |
+| Run/Artifact / Policy | `docs/data/run_id_spec.md` · `policy_registry_spec.md` |
+| 代码 README | `lab_platform/README.md` · `ros2/README.md` |
 
 ---
 
-## 十一、 变更记录
+## 十二、 变更记录
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
 | v1.0 | 2026-06-10 | Walking Skeleton 评审版 |
-| **v1.1** | 2026-07-09 | Gap 负责人 R2/R3；签字栏；核心团队分工表述 |
+| v1.1 | 2026-07-09 | Gap 负责人 R2/R3；签字栏 |
+| **v1.2** | **2026-08-07** | CTRL-SIM / 双轨 / P4–P5 / ArtifactHub；Gap 重排 |
 
 ---
 
-*TECH-14 | platform_architecture_as_built_v1 · 2026-06-10*
+*TECH-14 | platform_architecture_as_built_v1 · v1.2 · 2026-08-07*

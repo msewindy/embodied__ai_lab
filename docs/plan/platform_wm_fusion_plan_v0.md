@@ -3,11 +3,12 @@
 | 属性 | 内容 |
 |------|------|
 | **文档编号** | PLAN-FUSION-01 |
-| **版本** | v0.3 |
-| **日期** | 2026-08-03 |
+| **版本** | v0.4.3 |
+| **日期** | 2026-08-14 |
 | **维护人** | R1 |
 | **状态** | **working-baseline**（工作基线 · 指导 INFRA-02 / TECH-02 / TECH-04 / TECH-09） |
-| **关联** | L0 总体方案 · TECH-09/14 · **INFRA-02 v1.3** · 世界模型 FR3 设计（本地挂载） |
+| **关联** | [PLAN-CHARTER-01](./lab_charter_v0.md)（目的） · [PLAN-STRUCT-01](./lab_strategy_runtime_structure_v0.md)（结构） · INFRA-02 · SOP |
+| **进度** | 不复述长表 → 见 [INFRA-02 §1](../infra/phase1_validation_plan_v1.md) |
 
 ---
 
@@ -31,7 +32,7 @@
 | **约束** | INFRA-02 主验收路径、TECH-02 manipulation 扩展、TECH-04 Isaac/FR3 钉扎以本文 §2 / §4 为准 |
 | **不替代** | L0「框架优先」宪法；不把研究 H1–H5 写成框架 Go |
 | **变更** | 修订分层或 Phase-1 出口须走 CR，升本文小版本 |
-| **已落地配套** | INFRA-02 **v1.3** · TECH-02/04/09 双模式修订（同日） |
+| **已落地配套** | INFRA-02 **v1.4.6** · STRUCT **v0.3.1** · TECH-02/04/09 双模式 · CTRL-SIM/P5 |
 
 ---
 
@@ -57,16 +58,19 @@
   Pipeline A/B/C · Artifact · 版本矩阵 · 设备能力矩阵
               |  编排实验 / 锁资源 / 归档产物
               v
-[ L1 Agent Control Runtime — 世界模型三层 ]
-  High(薄) · Mid(厚) · Low(契约)
-  WorldBackend in {isaac_sim, franka_real}
-  控制仿真(CTRL-SIM): ROS2 同构 · DOMAIN=43 · lab-ws-02
-  真机: ROS2 · DOMAIN=42 · ws-01 + 臂
-              |  TaskSpaceCommand / LowStateFeedback（同一 msg）
+[ L1 Agent Control Runtime — Strategy Runtime ]
+  High(薄) · Mid(厚) · 世界上下文（策略面/评测面）· PolicyBackend
+  代码落点：本仓 strategy_runtime/（见 STRUCT）
+              |  SkillIntent / LowStateFeedback（TECH-02 同一 msg）
               v
-[ L2 本体与场景 ]
+[ L2 本体与场景 + Low 桥 ]
   FR3 + Hand · Scene tabletop_pickplace_v0 · 虚拟相机
+  WorldBackend ∈ {isaac_sim, franka_real}  ← 仿真/真机桥，属 L2-Low，不属 L1
+  控制仿真(CTRL-SIM): ROS2 同构 · DOMAIN=43 · lab-ws-02
+  真机: ROS2 · DOMAIN=42 · ws-01 + 臂（Phase-2 暂缓）
 ```
+
+> **v0.4.3：** 废止「WorldBackend 画在 L1 框内」的旧图。Isaac/真机桥是 L2-Low；L1 不拥有 sim step。结构细节以 STRUCT 为准。
 
 ### 2.0 lab-ws-02 双模式（v0.3 修正）
 
@@ -138,16 +142,17 @@
 
 **主题**：平台编排 + Agent Runtime 薄实现 + FR3/Isaac 动起来。  
 **对应**世界模型 P-1 → P0 → P1a（仿真）；平台 Walking Skeleton 换锚点。  
-**验收条目 SSOT**：[`INFRA-02`](../infra/phase1_validation_plan_v1.md) 主路径 **M1–M6**（下表 F1 ↔ M 映射）。
+**验收条目 SSOT**：[`INFRA-02`](../infra/phase1_validation_plan_v1.md)；分层落地顺序见 [PLAN-STRUCT-01](./lab_strategy_runtime_structure_v0.md) §9。  
+**Phase-1 已收口**（M6 E2E PASS 2026-08-07）。**当前工程重心**：真机 FR3（DOMAIN 42）→ [`phase2_franka_real_e2e_plan_v0.md`](../infra/phase2_franka_real_e2e_plan_v0.md)。
 
 | ID | INFRA-02 | 交付 | 验收出口 |
 |----|----------|------|----------|
 | F1-0 | M0 | 本机挂载 `external/world_model`；环境钉扎写入 run manifest 模板 | 挂载可读；版本表可填 |
 | F1-1 | M3 | RunManager 可发起/归档一次仿真 `run`（FR3 场景标签） | 有 `run_id` + manifest |
 | F1-2 | M2 | Low：Δpose 驱动 FR3（Isaac）+ `LowStateFeedback` 字段齐 | 末端按指令动 5cm；可急停/HOLD |
-| F1-3 | M4 | 双轨落盘最小集：运行日志 **或** LeRobot 主路径至少一条可回放 | 回放误差可接受 |
-| F1-4 | M5 | Mid 最小：Template MidGoal + 情境 stub/Oracle 可切换 | 无需完整五模块 |
-| F1-5 | M6 | PreFlight / 安全策略在仿真规程可走通；文档 SOP 一步通 | 成员可按清单独立开跑 |
+| F1-3 | M4 | 双轨落盘：A=`low.jsonl` 可回放；B=`lab data export --format lerobot-v3` + manifest 互链 | 回放误差可接受；B 有 `lerobot_dataset_path` |
+| F1-4 | M5 | Mid：Template / toward-target / `m5_pickplace` + Oracle | Scene 抓放谓词可机读 |
+| F1-5 | M6 | PreFlight / 安全策略在仿真规程可走通；文档 SOP 一步通 | **E2E PASS ✅** 2026-08-07 |
 | F1-6 | R-Go2 | Go2：保留为回归用例，从「主验收」摘牌 | 主路径改 FR3 |
 
 **Phase-1 明确不做**
@@ -166,7 +171,7 @@
 
 | 轨道 | 内容 |
 |------|------|
-| **平台** | 真 Franka Bridge；Pipeline C 标定；围栏急停真机门禁；Index/策略注册加固；工业 Pilot-A 作托举验收 |
+| **平台** | **真 Franka Bridge（进行中）**；Pipeline C 标定；围栏急停；见 [PHASE2-FR3-REAL](../infra/phase2_franka_real_e2e_plan_v0.md) |
 | **研究** | P1b（S2+B2）、P2（薄高层+B3）、P3（前向 WM/H2）；对照矩阵与日志评测闸门 |
 | **共享** | 同一 Scene/数据契约/WorldBackend；接口变更走 CR |
 
@@ -182,13 +187,17 @@
 
 | 对象 | 变更 | 状态 |
 |------|------|:----:|
-| INFRA-02 / Phase 1 | FR3 CTRL-SIM；M2–M6 详细技术方案；DOMAIN 43 | **v1.3 已改** |
+| INFRA-02 / Phase 1 | FR3 CTRL-SIM；M2–M6 详细技术方案；DOMAIN 43 | **v1.4.6**（进度看板 SSOT） |
+| PLAN-STRUCT-01 | L0×L1×L2 + Task Pack + 双轨/LeRobot 边界 | **v0.3.1**（结构 SSOT） |
 | TECH-02 | TaskSpace + 仿真域说明 | **v1.3 已改** |
 | TECH-04 | Isaac 钉扎 + DOMAIN 42/43 + 双模式 | **v1.3 已改** |
 | TECH-09 | 废止「ws-02 全程无 ROS2」；改为双模式 | **已改** |
-| `ros2/` | 新增 `franka_driver_bridge`（或等价）；Go2 包保留 | 待工程 |
-| Isaac Job / 示范任务 | 注册 `tabletop_pickplace_v0`（或等价 task id） | 待工程 |
-| master_wbs | 插入 F1-0…F1-6；原「仅 Go2 L1」条目降级或后置 | P1 文档批 |
+| `ros2/` | `franka_sim_bridge` + bringup；Go2 包保留 | **CTRL-SIM 已通** |
+| Task Pack / Scene | `tasks/tabletop_pickplace_v0`；`m5_pickplace` | **Phase-1 ✅** |
+| 数据 B 轨 | `lab data export --format lerobot-v3`；manifest 互链 | **P3 已通** |
+| Index / P5 | `ArtifactHub`：dataset/policy 默认注册；id 解析 | **P5 已通** |
+| M6 SOP / E2E | 成员按清单独立开跑 | **E2E PASS ✅** |
+| 真机 FR3 | `franka_driver_bridge` + DOMAIN 42 + L0 | **Phase-2 暂缓** |
 | L0 总体方案 | **不改宪法**；增补「首个 Agent Runtime = 三层栈」另 CR | 待定 |
 | 预算 Pilot-A | 仍作平台托举验收；不前移为 Phase-1 算法目标 | 维持 |
 
@@ -242,8 +251,13 @@
 | 文档 | 路径 |
 |------|------|
 | 本文 | `docs/plan/platform_wm_fusion_plan_v0.md` |
+| **结构 SSOT（L0×L1×L2）** | `docs/plan/lab_strategy_runtime_structure_v0.md` |
+| **目的宪章** | `docs/plan/lab_charter_v0.md` |
 | 本地挂载说明 | `external/README.md` |
-| INFRA-02（主验收） | `docs/infra/phase1_validation_plan_v1.md` |
+| INFRA-02（验收 + **进度看板**） | `docs/infra/phase1_validation_plan_v1.md` |
+| SOP（操作） | `docs/infra/sop_franka_ctrl_sim_v0.md` |
+| A→B 字段映射 | `docs/data/low_jsonl_to_lerobot_v3.md` |
+| Policy/Dataset 注册 | `docs/data/policy_registry_spec.md` |
 | L0 | `实验室运行框架建设总体方案.md` |
 | As-Built | `docs/architecture/platform_architecture_as_built_v1.md` |
 | FR3 框架设计 | `external/world_model/docs/FR3验证框架详细设计与阶段计划.md` |
@@ -256,8 +270,13 @@
 |------|------|------|
 | v0.1-draft | 2026-08-03 | 首稿 |
 | v0.2 | 2026-08-03 | 升为工作基线；挂钩 INFRA-02 M 序列 |
-| **v0.3** | 2026-08-03 | **ws-02 双模式**；CTRL-SIM=ROS2 DOMAIN 43；对齐 INFRA-02 v1.3 |
+| v0.3 | 2026-08-03 | **ws-02 双模式**；CTRL-SIM=ROS2 DOMAIN 43；对齐 INFRA-02 v1.3 |
+| **v0.4** | 2026-08-06 | 指向 PLAN-STRUCT-01；**M6 后置**；当前验收=Scene/`m5_pickplace`；B 轨 export |
+| v0.4.1 | 2026-08-07 | P5 Index 默认注册；M6 SOP 文档落地；交叉签字可后补 |
+| v0.4.2 | 2026-08-07 | Phase-1 E2E PASS 收口；Phase-2 真机 FR3 计划挂载 |
+| v0.4.3 | 2026-08-14 | WorldBackend 划回 L2-Low；STRUCT v0.3.1；真机暂缓；对齐 REQ 审视 |
+| v0.4.3b | 2026-08-14 | 挂载宪章为目的圣经 |
 
 ---
 
-*PLAN-FUSION-01 v0.3 · working-baseline · 2026-08-03*
+*PLAN-FUSION-01 v0.4.3 · working-baseline · 2026-08-14*

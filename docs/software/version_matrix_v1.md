@@ -5,7 +5,7 @@
 | **文档编号** | TECH-04 |
 | **版本** | v1.3 |
 | **维护人** | R2 |
-| **依据** | [PLAN-FUSION-01](../plan/platform_wm_fusion_plan_v0.md) · INFRA-02 v1.3 · 世界模型 FR3 §1.0 钉扎（本地挂载） |
+| **依据** | [PLAN-FUSION-01](../plan/platform_wm_fusion_plan_v0.md) · [INFRA-02](../infra/phase1_validation_plan_v1.md) · [STRUCT](../plan/lab_strategy_runtime_structure_v0.md) · 世界模型 FR3 钉扎（本地挂载） |
 
 ---
 

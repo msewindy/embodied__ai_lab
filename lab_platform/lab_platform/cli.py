@@ -31,6 +31,8 @@ def build_run_manager(
     ctrl_keep_launch: bool = False,
     ctrl_record: bool = False,
     ctrl_record_fps: float = 10.0,
+    ctrl_policy_checkpoint: str | None = None,
+    ctrl_policy_id: str | None = None,
 ) -> RunManager:
     index = IndexService(config)
     preflight = DefaultPreFlightGate(config, index)
@@ -50,6 +52,8 @@ def build_run_manager(
     ctrl_sim.keep_launch = ctrl_keep_launch
     ctrl_sim.record = ctrl_record
     ctrl_sim.record_fps = ctrl_record_fps
+    ctrl_sim.policy_checkpoint = ctrl_policy_checkpoint
+    ctrl_sim.policy_id = ctrl_policy_id
     return RunManager(
         config, index, preflight, scheduler, real, ros2, isaac, gap, ctrl_sim
     )
@@ -164,7 +168,19 @@ def cmd_list(args: argparse.Namespace) -> int:
     if args.artifacts:
         arts = index.list_artifacts(artifact_type=args.artifact_type)
         for a in arts:
-            print(f"{a.artifact_id}\t{a.artifact_type}\t{a.lifecycle_status}")
+            meta = a.metadata or {}
+            extra = ""
+            if a.artifact_type == "dataset":
+                extra = f"\tframes={meta.get('num_frames')}\t{a.storage_path}"
+            elif a.artifact_type == "policy":
+                src = meta.get("source_dataset_ids") or []
+                extra = f"\tsrc={','.join(src) if src else '-'}\t{a.storage_path}"
+            else:
+                extra = f"\t{a.storage_path}"
+            print(
+                f"{a.artifact_id}\t{a.artifact_type}\t{a.lifecycle_status}"
+                f"\tproducer={a.producer_run_id or '-'}{extra}"
+            )
     else:
         runs = index.list_runs(run_type=args.run_type)
         for r in runs:
@@ -196,6 +212,7 @@ def cmd_ctrl_sim_run(args: argparse.Namespace) -> int:
     if not config.index_db.exists():
         init_workspace(config)
 
+    from lab_platform.artifacts import ArtifactHub
     from lab_platform.ctrl_sim.launcher import resolve_ros2_bin, ros2_missing_hint
     from lab_platform.pipeline_c.ros2_runtime import ros2_available
 
@@ -209,13 +226,28 @@ def cmd_ctrl_sim_run(args: argparse.Namespace) -> int:
         print(f"ERROR: {ros2_missing_hint()}", file=sys.stderr)
         return 2
 
+    ckpt_ref = getattr(args, "checkpoint", None) or None
+    resolved_ckpt: str | None = None
+    policy_id: str | None = None
+    if ckpt_ref or args.profile == "m5_policy_rollout":
+        hub = ArtifactHub(config, IndexService(config))
+        if ckpt_ref:
+            try:
+                ckpt_path, policy_id = hub.resolve_policy_checkpoint(ckpt_ref)
+                resolved_ckpt = str(ckpt_path)
+            except FileNotFoundError as e:
+                print(f"ERROR: {e}", file=sys.stderr)
+                return 1
+
     rm = build_run_manager(
         config,
         use_ros=True,
         ctrl_auto_launch=not args.no_launch,
         ctrl_keep_launch=args.keep_launch,
-        ctrl_record=bool(args.record),
+        ctrl_record=not bool(args.no_record),
         ctrl_record_fps=float(args.record_fps),
+        ctrl_policy_checkpoint=resolved_ckpt or ckpt_ref,
+        ctrl_policy_id=policy_id,
     )
     req = RunCreateRequest(
         run_type="ctrl_sim",
@@ -229,6 +261,9 @@ def cmd_ctrl_sim_run(args: argparse.Namespace) -> int:
         record = rm.execute(req)
         meta = record.metadata.get("execution", {})
         run_dir = config.data_root / record.storage_path
+        if policy_id:
+            index = IndexService(config)
+            index.link_run_artifact(record.run_id, policy_id, "upstream")
         print(
             json.dumps(
                 {
@@ -236,6 +271,8 @@ def cmd_ctrl_sim_run(args: argparse.Namespace) -> int:
                     "status": record.status.value,
                     "storage_path": record.storage_path,
                     "manifest": str(run_dir / "manifest.json"),
+                    "policy_id": policy_id,
+                    "checkpoint": resolved_ckpt or ckpt_ref,
                     "ros_domain_id": meta.get("ros_domain_id", 43),
                     "backend": meta.get("backend", "isaac_sim"),
                     "isaac_sim_version": meta.get("isaac_sim_version"),
@@ -255,6 +292,164 @@ def cmd_ctrl_sim_run(args: argparse.Namespace) -> int:
     except (RunRejectedError, ResourceConflictError) as e:
         print(f"failed: {e}", file=sys.stderr)
         return 1
+
+
+def cmd_policy_train(args: argparse.Namespace) -> int:
+    """B 轨 → 轻量 state MLP checkpoint；默认注册 Index。"""
+    config = LabConfig.from_env(Path(args.data_root))
+    if not config.index_db.exists():
+        init_workspace(config)
+    from lab_platform.artifacts import ArtifactHub
+    from lab_platform.ctrl_sim.policy_train import PolicyTrainError, train_lerobot_state
+
+    index = IndexService(config)
+    hub = ArtifactHub(config, index)
+    roots: list[Path] = []
+    dataset_ids: list[str] = []
+    for d in args.dataset:
+        try:
+            root, did = hub.resolve_dataset_root(d)
+        except FileNotFoundError as e:
+            print(f"ERROR: {e}", file=sys.stderr)
+            return 1
+        roots.append(root)
+        if did:
+            dataset_ids.append(did)
+    out = Path(args.out).expanduser() if args.out else (
+        config.data_root / "artifacts" / "policies" / (args.policy_id or "pol_state_p4_mvp")
+    )
+    if not out.is_absolute():
+        out = (config.data_root / out).resolve()
+    try:
+        result = train_lerobot_state(
+            dataset_roots=roots,
+            out_dir=out,
+            hidden=int(args.hidden),
+            epochs=int(args.epochs),
+            batch_size=int(args.batch_size),
+            lr=float(args.lr),
+            seed=int(args.seed),
+            policy_id=args.policy_id,
+        )
+    except PolicyTrainError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return 1
+
+    registered_id = None
+    if not bool(args.no_register):
+        train_meta = {
+            "num_frames": result.num_frames,
+            "final_mse": result.final_mse,
+            "hidden": int(args.hidden),
+            "epochs": int(args.epochs),
+            "lr": float(args.lr),
+            "seed": int(args.seed),
+            "source_datasets": result.datasets,
+        }
+        registered_id = hub.register_state_policy(
+            policy_dir=result.checkpoint.parent,
+            policy_id=result.policy_id,
+            source_dataset_ids=dataset_ids,
+            train_meta=train_meta,
+            lifecycle="draft",
+        )
+
+    print(
+        json.dumps(
+            {
+                "policy_id": registered_id or result.policy_id,
+                "backend": "lerobot_state",
+                "checkpoint": str(result.checkpoint),
+                "meta": str(result.meta_path),
+                "num_frames": result.num_frames,
+                "final_mse": result.final_mse,
+                "datasets": result.datasets,
+                "source_dataset_ids": dataset_ids,
+                "registered": registered_id is not None,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+    return 0
+
+
+def cmd_policy_rollout(args: argparse.Namespace) -> int:
+    """便捷入口：等同 ctrl-sim run --profile m5_policy_rollout。"""
+    args.profile = "m5_policy_rollout"
+    args.scene = args.scene or "tabletop_pickplace_v0"
+    args.no_launch = getattr(args, "no_launch", False)
+    args.keep_launch = getattr(args, "keep_launch", True)
+    args.no_record = getattr(args, "no_record", False)
+    args.record_fps = getattr(args, "record_fps", 10.0)
+    args.operator = getattr(args, "operator", None)
+    args.device = getattr(args, "device", "franka-01")
+    return cmd_ctrl_sim_run(args)
+
+
+def cmd_data_export(args: argparse.Namespace) -> int:
+    """A 轨 → B 轨（LeRobot Dataset v3）；写回 manifest 互链；默认注册 Index。"""
+    config = LabConfig.from_env(Path(args.data_root))
+    if not config.index_db.exists():
+        init_workspace(config)
+    run_dir = _find_ctrl_sim_run_dir(config, args.run_id)
+    if run_dir is None:
+        print(f"ERROR: run not found: {args.run_id}", file=sys.stderr)
+        return 1
+    if args.format != "lerobot-v3":
+        print(f"ERROR: unsupported format: {args.format}", file=sys.stderr)
+        return 2
+
+    from lab_platform.artifacts import ArtifactHub
+    from lab_platform.ctrl_sim.lerobot_export import (
+        LerobotExportError,
+        export_low_jsonl_to_lerobot_v3,
+    )
+
+    try:
+        result = export_low_jsonl_to_lerobot_v3(
+            run_dir=run_dir,
+            data_root=config.data_root,
+            out_dir=Path(args.out) if args.out else None,
+            fps=args.fps,
+            task=args.task,
+            overwrite=bool(args.overwrite),
+        )
+    except LerobotExportError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return 1
+
+    registered_id = None
+    if not bool(args.no_register):
+        hub = ArtifactHub(config, IndexService(config))
+        registered_id = hub.register_dataset(
+            dataset_root=result.dataset_root,
+            source_run_id=result.run_id,
+            relative_path=result.relative_path,
+            num_frames=result.num_frames,
+            fps=result.fps,
+            dataset_id=result.dataset_id,
+        )
+
+    print(
+        json.dumps(
+            {
+                "run_id": result.run_id,
+                "format": "lerobot-v3",
+                "dataset_id": registered_id or result.dataset_id,
+                "dataset_root": str(result.dataset_root),
+                "lerobot_dataset_path": result.relative_path,
+                "num_frames": result.num_frames,
+                "fps": result.fps,
+                "registered": registered_id is not None,
+                "manifest": str(run_dir / "manifest.json"),
+                "field_map": "docs/data/low_jsonl_to_lerobot_v3.md",
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+    return 0
 
 
 def cmd_ctrl_sim_replay(args: argparse.Namespace) -> int:
@@ -282,7 +477,11 @@ def cmd_ctrl_sim_replay(args: argparse.Namespace) -> int:
         return 1
     jsonl = run_dir / "logs" / "low.jsonl"
     if not jsonl.is_file():
-        print(f"ERROR: missing {jsonl} (run with --record first)", file=sys.stderr)
+        print(
+            f"ERROR: missing {jsonl} (formal runs record by default; "
+            "re-run without --no-record)",
+            file=sys.stderr,
+        )
         return 1
 
     # 可选：缺 bridge 时自动 launch（与 run 一致）
@@ -526,12 +725,31 @@ def main(argv: list[str] | None = None) -> int:
         help="归档一次 FR3 控制仿真 run（真 ROS run_context；缺 bridge 时自动 launch）",
     )
     p_csr.add_argument("--device", default="franka-01")
-    p_csr.add_argument("--scene", default="tabletop_pickplace_v0_min")
+    p_csr.add_argument(
+        "--scene",
+        default="tabletop_pickplace_v0",
+        help="Task Pack id（仓库 tasks/<scene>/）；遗留 tabletop_pickplace_v0_min 无包也可",
+    )
     p_csr.add_argument(
         "--profile",
         default="m2_hello",
-        choices=["m2_hello", "m5_template"],
-        help="m2_hello=Δpose 冒烟；m5_template=薄 Mid APPROACH→RETREAT",
+        choices=[
+            "m2_hello",
+            "m5_template",
+            "m5_approach_target",
+            "m5_pickplace",
+            "m5_policy_rollout",
+        ],
+        help=(
+            "m2_hello=Δpose 冒烟；m5_template=相对 Mid；"
+            "m5_approach_target=P1 朝预抓点；m5_pickplace=P2 抓放；"
+            "m5_policy_rollout=P4 state MLP"
+        ),
+    )
+    p_csr.add_argument(
+        "--checkpoint",
+        default=None,
+        help="m5_policy_rollout：policy.npz 路径或 Index policy_id",
     )
     p_csr.add_argument(
         "--no-launch",
@@ -544,13 +762,87 @@ def main(argv: list[str] | None = None) -> int:
         help="若本次由 lab 拉起 bringup，结束后不杀掉",
     )
     p_csr.add_argument(
-        "--record",
+        "--no-record",
         action="store_true",
-        help="M4：同步录制 A 轨 logs/low.jsonl（intent+low_state @record-fps）",
+        help="关闭 A 轨录制（正式 run 默认录制 logs/low.jsonl）",
     )
     p_csr.add_argument("--record-fps", type=float, default=10.0, help="A 轨落盘 Hz（默认 10）")
     p_csr.add_argument("--operator")
     p_csr.set_defaults(func=cmd_ctrl_sim_run)
+
+    p_data = sub.add_parser("data", help="数据轨：A→B 导出等")
+    data_sub = p_data.add_subparsers(dest="data_cmd", required=True)
+    p_exp = data_sub.add_parser(
+        "export",
+        help="从 run 的 A 轨导出学习集（LeRobot Dataset v3）",
+    )
+    p_exp.add_argument("--run-id", required=True, help="源 ctrl_sim run_id")
+    p_exp.add_argument(
+        "--format",
+        default="lerobot-v3",
+        choices=["lerobot-v3"],
+        help="目标格式（STRUCT §5.4 B 轨）",
+    )
+    p_exp.add_argument(
+        "--out",
+        default=None,
+        help="输出目录（默认 <data-root>/datasets/lerobot_v3/<run_id>）",
+    )
+    p_exp.add_argument("--fps", type=float, default=None, help="覆盖推断/manifest fps")
+    p_exp.add_argument("--task", default=None, help="覆盖任务自然语言（默认 scene.yaml）")
+    p_exp.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="允许覆盖已有 dataset 目录",
+    )
+    p_exp.add_argument(
+        "--no-register",
+        action="store_true",
+        help="不写入 Index（默认注册 dataset 并互链源 run）",
+    )
+    p_exp.set_defaults(func=cmd_data_export)
+
+    p_pol = sub.add_parser("policy", help="策略训练 / rollout（P4/P5）")
+    pol_sub = p_pol.add_subparsers(dest="policy_cmd", required=True)
+    p_tr = pol_sub.add_parser("train", help="从 LeRobot v3 parquet 训 state MLP")
+    p_tr.add_argument(
+        "--dataset",
+        action="append",
+        required=True,
+        help="dataset 根目录或 Index dataset_id（可多次）",
+    )
+    p_tr.add_argument(
+        "--out",
+        default=None,
+        help="输出目录（默认 <data-root>/artifacts/policies/<policy-id>）",
+    )
+    p_tr.add_argument("--policy-id", default="pol_state_p4_mvp")
+    p_tr.add_argument("--hidden", type=int, default=128)
+    p_tr.add_argument("--epochs", type=int, default=80)
+    p_tr.add_argument("--batch-size", type=int, default=64)
+    p_tr.add_argument("--lr", type=float, default=1e-3)
+    p_tr.add_argument("--seed", type=int, default=0)
+    p_tr.add_argument(
+        "--no-register",
+        action="store_true",
+        help="不写入 Index（默认注册 policy 并链到源 datasets）",
+    )
+    p_tr.set_defaults(func=cmd_policy_train)
+
+    p_ro = pol_sub.add_parser("rollout", help="CTRL-SIM 上跑 lerobot_state 策略")
+    p_ro.add_argument("--device", default="franka-01")
+    p_ro.add_argument("--scene", default="tabletop_pickplace_v0")
+    p_ro.add_argument(
+        "--checkpoint",
+        required=True,
+        help="policy.npz 路径或 Index policy_id",
+    )
+    p_ro.add_argument("--keep-launch", action="store_true", default=True)
+    p_ro.add_argument("--no-launch", action="store_true")
+    p_ro.add_argument("--no-record", action="store_true")
+    p_ro.add_argument("--record-fps", type=float, default=10.0)
+    p_ro.add_argument("--operator")
+    p_ro.set_defaults(func=cmd_policy_rollout)
 
     p_csp = cs_sub.add_parser("replay", help="M4：开环回放某 run 的 low.jsonl")
     p_csp.add_argument("--run-id", required=True)

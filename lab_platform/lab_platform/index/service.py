@@ -126,6 +126,34 @@ class IndexService:
                 ),
             )
 
+    def upsert_artifact(self, record: ArtifactRecord) -> None:
+        """P5：dataset/policy 重导时更新同一 artifact_id。"""
+        ts = datetime.now(timezone.utc).isoformat()
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO artifacts (
+                    artifact_id, artifact_type, lifecycle_status, producer_run_id,
+                    storage_path, metadata_json, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(artifact_id) DO UPDATE SET
+                    artifact_type=excluded.artifact_type,
+                    lifecycle_status=excluded.lifecycle_status,
+                    producer_run_id=excluded.producer_run_id,
+                    storage_path=excluded.storage_path,
+                    metadata_json=excluded.metadata_json
+                """,
+                (
+                    record.artifact_id,
+                    record.artifact_type,
+                    record.lifecycle_status,
+                    record.producer_run_id,
+                    record.storage_path,
+                    json.dumps(record.metadata),
+                    ts,
+                ),
+            )
+
     def patch_artifact(self, artifact_id: str, **fields) -> None:
         if "lifecycle_status" not in fields and "metadata" not in fields:
             return
@@ -198,10 +226,57 @@ class IndexService:
                 upstream.append(item)
             else:
                 downstream.append(item)
+        # 附带 run manifest 中的 tracks / policy 摘要（若落盘存在）
+        tracks = None
+        policy = None
+        dataset_id = None
+        policy_id = None
+        policy_artifact = None
+        dataset_artifact = None
+        try:
+            man_path = self._config.data_root / run.storage_path / "manifest.json"
+            if man_path.is_file():
+                man = json.loads(man_path.read_text(encoding="utf-8"))
+                tracks = man.get("tracks")
+                policy = man.get("policy")
+                dataset_id = (tracks or {}).get("B", {}).get("dataset_id") or man.get(
+                    "dataset_id"
+                )
+                if isinstance(policy, dict):
+                    policy_id = policy.get("policy_id")
+                policy_id = policy_id or man.get("policy_id")
+        except (OSError, json.JSONDecodeError, TypeError):
+            pass
+        if dataset_id:
+            da = self.get_artifact(dataset_id)
+            if da:
+                dataset_artifact = {
+                    "artifact_id": da.artifact_id,
+                    "type": da.artifact_type,
+                    "storage_path": da.storage_path,
+                    "metadata": da.metadata,
+                }
+        if policy_id:
+            pa = self.get_artifact(policy_id)
+            if pa:
+                policy_artifact = {
+                    "artifact_id": pa.artifact_id,
+                    "type": pa.artifact_type,
+                    "storage_path": pa.storage_path,
+                    "source_dataset_ids": (pa.metadata or {}).get("source_dataset_ids"),
+                    "metadata": pa.metadata,
+                }
         return {
             "run_id": run_id,
             "run_type": run.run_type,
             "status": run.status.value,
+            "storage_path": run.storage_path,
+            "dataset_id": dataset_id,
+            "policy_id": policy_id,
+            "tracks": tracks,
+            "policy": policy,
+            "dataset_artifact": dataset_artifact,
+            "policy_artifact": policy_artifact,
             "upstream": upstream,
             "downstream": downstream,
         }

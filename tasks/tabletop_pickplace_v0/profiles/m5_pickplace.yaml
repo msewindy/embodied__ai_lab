@@ -1,0 +1,70 @@
+# P2：桌面抓放（抗弹飞优化：正确夹爪开度 + 高位释放 + 缓降）
+# gripper≈1-0.045/0.08=0.4375（匹配 Ø65mm 杯）；PLACE 在碗顶留 2.5cm 净空后张开。
+profile: m5_pickplace
+situation: oracle
+forward_wm: off
+cup_grid_id: 4
+goals:
+  - name: APPROACH
+    mode: toward
+    target_ref: pregrasp_red_cup
+    rate_hz: 10.0
+    max_duration_s: 15.0
+    max_step_m: 0.03
+    success_eps_pos_m: 0.04
+    expire_ms: 200
+    gripper: 0.0
+
+  - name: GRASP
+    mode: toward
+    target_ref: grasp_red_cup
+    rate_hz: 10.0
+    max_duration_s: 10.0
+    max_step_m: 0.015
+    success_eps_pos_m: 0.025
+    dwell_s: 1.5
+    expire_ms: 200
+    gripper: 0.0
+    gripper_dwell: 0.44   # ≈ grasp_close_width 0.045 / open 0.080
+
+  - name: LIFT
+    mode: toward
+    target_ref: lift_hold
+    rate_hz: 10.0
+    max_duration_s: 8.0
+    max_step_m: 0.025
+    success_eps_pos_m: 0.035
+    expire_ms: 200
+    gripper: 0.44
+
+  - name: MOVE_ABOVE
+    mode: toward
+    target_ref: above_bowl
+    rate_hz: 10.0
+    max_duration_s: 18.0
+    max_step_m: 0.025
+    success_eps_pos_m: 0.05
+    expire_ms: 200
+    gripper: 0.44
+
+  - name: PLACE
+    mode: toward
+    target_ref: place_bowl
+    rate_hz: 10.0
+    max_duration_s: 12.0
+    max_step_m: 0.012
+    success_eps_pos_m: 0.035
+    dwell_s: 1.2
+    expire_ms: 200
+    gripper: 0.44
+    gripper_dwell: 0.0   # 高位张开，杯自由落到碗垫
+
+  - name: RETREAT
+    mode: toward
+    target_ref: retreat
+    rate_hz: 10.0
+    max_duration_s: 12.0
+    max_step_m: 0.03
+    success_eps_pos_m: 0.05
+    expire_ms: 200
+    gripper: 0.0
